@@ -44,5 +44,9 @@ export enum NetworkType {
     UNKNOWN = 'unknown'
 }
 
-export const PROD_BACK_URL = "https://v402pay.onvoyage.ai/api/pay";
+// 在构建时会被 tsup 的 define 替换
+declare const __PROD_BACK_URL__: string;
+export const PROD_BACK_URL = typeof __PROD_BACK_URL__ !== 'undefined' 
+    ? __PROD_BACK_URL__ 
+    : "https://v402pay.onvoyage.ai/api/pay";
 
