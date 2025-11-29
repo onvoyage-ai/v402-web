@@ -193,12 +193,12 @@ This feature will be provided by the v402pay platform with configurable options 
 Visit [v402pay Platform](https://v402pay.com) to create your merchant account:
 
 1. Register an account
-2. Create merchant configuration:
+2. Create checkout configuration:
    - **Callback URL**: API endpoint called after successful payment
    - **Payment Price**: Fee per access (e.g., 0.01 USDC)
-   - **Supported Networks**: Solana, Ethereum, Polygon, etc.
+   - **Supported Networks**: Solana, Ethereum, Base, etc.
    - **Recipient Address**: Your receiving wallet address
-3. Get your **merchantId** (for frontend integration)
+3. Get your **checkoutId** (for frontend integration)
 
 ### 2. Install SDK
 
@@ -206,30 +206,78 @@ Visit [v402pay Platform](https://v402pay.com) to create your merchant account:
 npm install @voyage_ai/v402-web-ts
 ```
 
-### 3. Two Usage Methods
+### 3. Three Usage Methods
 
-## Method 1: Use Built-in Components (Recommended, Ready to Use)
+## Method 1: Use V402Checkout Component (Recommended, 1 Line of Code)
 
-Perfect for quick integration with pre-built UI components handling wallet connection and payment logic.
+The easiest way - complete payment UI with wallet connection, payment processing, and result display built-in.
+
+```tsx
+import React from 'react';
+import { V402Checkout } from '@voyage_ai/v402-web-ts/react';
+import '@voyage_ai/v402-web-ts/react/styles.css';
+import 'antd/dist/reset.css'; // Ant Design styles
+
+export default function PaymentPage() {
+  return (
+    <V402Checkout
+      checkoutId="your-checkout-id"  // Get from v402pay platform
+      headerInfo={{
+        title: 'Premium Content Access',
+        subtitle: 'mysite.com',
+        tooltipText: 'One-time payment for lifetime access'
+      }}
+      onPaymentComplete={(result) => {
+        console.log('✅ Payment successful!', result);
+        // Handle post-payment logic (redirect, show content, etc.)
+      }}
+      additionalParams={{
+        userId: '123',
+        // Any custom params to pass to your callback API
+      }}
+      expectedNetwork="evm" // Optional: 'evm' or 'svm'
+      isModal={false}  // Optional: true for modal mode, false for full page
+    />
+  );
+}
+```
+
+**Props:**
+- `checkoutId` (required): Your checkout ID from v402pay platform
+- `headerInfo` (optional): Customize header display
+- `onPaymentComplete` (optional): Callback when payment succeeds
+- `additionalParams` (optional): Custom parameters to pass to your callback API
+- `expectedNetwork` (optional): Force specific network type ('evm' or 'svm')
+- `isModal` (optional): Display as modal (true) or full page (false)
+
+## Method 2: Use Built-in Hooks (Custom UI)
+
+Perfect for building custom UI while leveraging built-in payment logic.
 
 ```tsx
 import React from 'react';
 import { 
-  useWallet, 
+  usePageNetwork,  // Auto-manage network for the page
   usePayment, 
   usePaymentInfo,
   WalletConnect 
 } from '@voyage_ai/v402-web-ts/react';
-import { makePayment } from '@voyage_ai/v402-web-ts';
+import { makePayment, NetworkType } from '@voyage_ai/v402-web-ts';
 import '@voyage_ai/v402-web-ts/react/styles.css';
 
-export default function PaymentPage() {
-  const merchantId = 'your-merchant-id'; // Get from v402pay
+export default function CustomPaymentPage() {
+  const checkoutId = 'your-checkout-id';
   
-  // Use React Hooks to manage state
-  const { address, networkType } = useWallet();
+  // Fetch payment info to get supported networks
+  const { supportedNetworks, isLoading, paymentInfo } = usePaymentInfo(checkoutId);
+  
+  // Auto-manage wallet for this page's expected network
+  const { address, networkType, disconnect } = usePageNetwork(
+    supportedNetworks[0] || NetworkType.EVM,
+    { autoSwitch: true }
+  );
+  
   const { isProcessing, setIsProcessing, result, setResult, error, setError } = usePayment();
-  const { supportedNetworks, isLoading } = usePaymentInfo(merchantId);
 
   const handlePayment = async () => {
     if (!networkType) return;
@@ -238,11 +286,8 @@ export default function PaymentPage() {
     setError(null);
     
     try {
-      // Initiate payment
-      const response = await makePayment(networkType, merchantId);
+      const response = await makePayment(networkType, checkoutId);
       const data = await response.json();
-      
-      // Payment successful, data contains your callback API response
       setResult(data);
       console.log('✅ Payment successful!', data);
     } catch (err: any) {
@@ -256,24 +301,23 @@ export default function PaymentPage() {
     <div>
       <h1>Purchase Content</h1>
       
-      {/* Wallet Connection Component (Built-in UI) */}
-      {!isLoading && (
-        <WalletConnect 
-          supportedNetworks={supportedNetworks}
-        />
+      {/* Wallet Connection */}
+      {!isLoading && !address && (
+        <WalletConnect supportedNetworks={supportedNetworks} />
       )}
       
-      {/* Payment Button */}
+      {/* Connected State */}
       {address && (
-        <button 
-          onClick={handlePayment} 
-          disabled={isProcessing}
-        >
-          {isProcessing ? 'Processing...' : 'Pay Now'}
-        </button>
+        <div>
+          <p>Connected: {address}</p>
+          <button onClick={disconnect}>Disconnect</button>
+          <button onClick={handlePayment} disabled={isProcessing}>
+            {isProcessing ? 'Processing...' : 'Pay Now'}
+          </button>
+        </div>
       )}
       
-      {/* Display Result */}
+      {/* Result */}
       {result && (
         <div>
           <h2>Payment Successful! 🎉</h2>
@@ -287,9 +331,9 @@ export default function PaymentPage() {
 }
 ```
 
-## Method 2: Custom Wallet Integration
+## Method 3: Direct Handler Integration (Advanced)
 
-If you already have your own wallet connection logic, you can directly call the payment handler functions.
+If you have your own wallet connection logic, directly call the payment handler functions.
 
 ```typescript
 import { 
@@ -300,20 +344,24 @@ import {
 
 // Solana Payment Example
 async function paySolana() {
-  const merchantId = 'your-merchant-id';
+  const checkoutId = 'your-checkout-id';
+  const endpoint = 'https://v402.onvoyage.ai/api/pay';
   
   // Ensure user has connected Phantom wallet
   const wallet = window.solana;
-  if (!wallet) {
-    throw new Error('Please install Phantom wallet');
+  if (!wallet?.isConnected) {
+    await wallet.connect();
   }
   
-  await wallet.connect();
-  
-  // Call SVM payment
+  // Call SVM payment handler
   const response = await handleSvmPayment(
-    merchantId,
-    wallet  // Pass your wallet adapter
+    endpoint,
+    {
+      wallet,
+      network: 'solana-mainnet',  // or 'solana-devnet'
+      checkoutId,
+      additionalParams: { userId: '123' }  // Optional
+    }
   );
   
   const result = await response.json();
@@ -322,31 +370,29 @@ async function paySolana() {
 
 // Ethereum Payment Example
 async function payEthereum() {
-  const merchantId = 'your-merchant-id';
-  const { ethers } = await import('ethers');
+  const checkoutId = 'your-checkout-id';
+  const endpoint = 'https://v402.onvoyage.ai/api/pay';
   
-  // Connect MetaMask
-  const provider = new ethers.BrowserProvider(window.ethereum);
-  const signer = await provider.getSigner();
-  
-  // Create wallet adapter
+  // Get wallet adapter
   const walletAdapter = {
-    getAddress: async () => await signer.getAddress(),
-    signTypedData: async (domain: any, types: any, value: any) => {
-      return await signer.signTypedData(domain, types, value);
+    address: await window.ethereum.request({ method: 'eth_requestAccounts' })[0],
+    signTypedData: async (domain: any, types: any, message: any) => {
+      // Implement EIP-712 signing
     },
     switchChain: async (chainId: string) => {
-      await window.ethereum.request({
-        method: 'wallet_switchEthereumChain',
-        params: [{ chainId }],
-      });
-    },
+      // Implement chain switching
+    }
   };
   
-  // Call EVM payment
+  // Call EVM payment handler
   const response = await handleEvmPayment(
-    merchantId,
-    walletAdapter
+    endpoint,
+    {
+      wallet: walletAdapter,
+      network: 'base-mainnet',  // or 'ethereum-mainnet', 'polygon-mainnet', etc.
+      checkoutId,
+      additionalParams: { userId: '123' }  // Optional
+    }
   );
   
   const result = await response.json();
@@ -360,7 +406,7 @@ async function payEthereum() {
 
 #### `useWallet()`
 
-Manage wallet connection state.
+Manage wallet connection state (external store, no Provider needed).
 
 ```typescript
 const { 
@@ -368,54 +414,129 @@ const {
   networkType,    // Network type (NetworkType | null)
   isConnecting,   // Is connecting (boolean)
   error,          // Error message (string | null)
-  connect,        // Connect wallet function (networkType: NetworkType) => Promise<void>
-  disconnect,     // Disconnect function () => void
-  clearError      // Clear error function () => void
+  connect,        // Connect wallet: (networkType: NetworkType) => Promise<void>
+  switchNetwork,  // Switch network: (networkType: NetworkType) => Promise<void>
+  ensureNetwork,  // Ensure network: (networkType: NetworkType) => Promise<void>
+  disconnect,     // Disconnect wallet: () => void
+  clearError      // Clear error: () => void
 } = useWallet();
+```
+
+**Features:**
+- ✅ No Context Provider needed (uses React 18's `useSyncExternalStore`)
+- ✅ Supports EVM and SVM wallet coexistence
+- ✅ Auto-persists wallet addresses per network
+- ✅ Prevents auto-reconnect after manual disconnect
+
+#### `usePageNetwork(expectedNetwork, options?)`
+
+Page-level network management - automatically ensures correct network for the page.
+
+```typescript
+const wallet = usePageNetwork(
+  NetworkType.EVM,  // Expected network type for this page
+  {
+    autoSwitch: true,      // Auto-switch to expected network (default: true)
+    switchOnMount: true,   // Switch on component mount (default: true)
+  }
+);
+// Returns same interface as useWallet()
+```
+
+**Use Cases:**
+- EVM-only pages: `usePageNetwork(NetworkType.EVM)`
+- SVM-only pages: `usePageNetwork(NetworkType.SVM)`
+- Automatic network management when switching between pages
+
+**Example:**
+```tsx
+// Page A - EVM only
+function EvmPage() {
+  const { address } = usePageNetwork(NetworkType.EVM);
+  return <div>EVM Address: {address}</div>;
+}
+
+// Page B - SVM only  
+function SvmPage() {
+  const { address } = usePageNetwork(NetworkType.SVM);
+  return <div>SVM Address: {address}</div>;
+}
 ```
 
 #### `usePayment()`
 
-Manage payment state.
+Manage payment state (state only, no payment logic).
 
 ```typescript
 const {
-  isProcessing,   // Is processing (boolean)
-  result,         // Payment result (any)
-  error,          // Error message (string | null)
+  isProcessing,    // Is processing (boolean)
+  result,          // Payment result (any)
+  error,           // Error message (string | null)
   setIsProcessing, // Set processing state
-  setResult,      // Set result
-  setError,       // Set error
-  clearResult,    // Clear result
-  clearError,     // Clear error
-  reset           // Reset all states
+  setResult,       // Set result
+  setError,        // Set error
+  clearResult,     // Clear result
+  clearError,      // Clear error
+  reset            // Reset all states
 } = usePayment();
 ```
 
-#### `usePaymentInfo(merchantId: string)`
+#### `usePaymentInfo(checkoutId, endpoint?, additionalParams?)`
 
-Fetch merchant payment configuration.
+Fetch checkout payment configuration from backend.
 
 ```typescript
 const {
-  supportedNetworks,  // Supported networks list (NetworkType[])
+  supportedNetworks,  // Supported network types (NetworkType[])
   isLoading,          // Is loading (boolean)
-  error              // Error message (string | null)
-} = usePaymentInfo('your-merchant-id');
+  error,              // Error message (string | null)
+  paymentInfo         // Raw payment info from backend (any)
+} = usePaymentInfo(
+  'your-checkout-id',
+  'https://v402.onvoyage.ai/api/pay',  // Optional
+  { userId: '123' }                      // Optional
+);
 ```
 
 ### React Components
 
+#### `<V402Checkout />`
+
+Complete checkout component with built-in wallet connection, payment UI, and result display.
+
+```tsx
+<V402Checkout
+  checkoutId="your-checkout-id"           // Required
+  headerInfo={{                            // Optional
+    title: 'Payment Title',
+    subtitle: 'yoursite.com',
+    tooltipText: 'Payment description'
+  }}
+  isModal={false}                          // Optional: modal or full page
+  onPaymentComplete={(result) => {}}       // Optional: callback
+  additionalParams={{ userId: '123' }}    // Optional: custom params
+  expectedNetwork={NetworkType.EVM}        // Optional: force network
+/>
+```
+
+**Props:**
+- `checkoutId` (required): Your checkout ID from v402pay
+- `headerInfo` (optional): Customize header display
+- `isModal` (optional): Display as modal (true) or full page (false)
+- `onPaymentComplete` (optional): Callback function on successful payment
+- `additionalParams` (optional): Custom parameters to pass to callback API
+- `expectedNetwork` (optional): Force specific network type
+
 #### `<WalletConnect />`
 
-Ready-to-use wallet connection component.
+Standalone wallet connection component (used internally by V402Checkout).
 
 ```tsx
 <WalletConnect
-  supportedNetworks={[NetworkType.SOLANA, NetworkType.EVM]}  // Optional
-  className="custom-class"                                     // Optional
-  onConnect={(address, networkType) => {}}                    // Optional
-  onDisconnect={() => {}}                                     // Optional
+  supportedNetworks={[NetworkType.SOLANA, NetworkType.EVM]}
+  className="custom-class"
+  onConnect={(address, networkType) => {}}
+  onDisconnect={() => {}}
 />
 ```
 
@@ -427,7 +548,7 @@ Ready-to-use wallet connection component.
 
 ### Core Functions
 
-#### `makePayment(networkType, merchantId)`
+#### `makePayment(networkType, checkoutId, endpoint?, additionalParams?)`
 
 Unified payment entry function that automatically handles different chain payment logic.
 
@@ -435,14 +556,16 @@ Unified payment entry function that automatically handles different chain paymen
 import { makePayment, NetworkType } from '@voyage_ai/v402-web-ts';
 
 const response = await makePayment(
-  NetworkType.SOLANA,    // or NetworkType.EVM
-  'your-merchant-id'
+  NetworkType.EVM,              // or NetworkType.SVM
+  'your-checkout-id',
+  'https://v402.onvoyage.ai/api/pay',  // Optional
+  { userId: '123' }                     // Optional
 );
 
 const result = await response.json();
 ```
 
-#### `handleSvmPayment(merchantId, walletAdapter)`
+#### `handleSvmPayment(endpoint, options)`
 
 Handle Solana (SVM) chain payments.
 
@@ -450,12 +573,23 @@ Handle Solana (SVM) chain payments.
 import { handleSvmPayment } from '@voyage_ai/v402-web-ts';
 
 const response = await handleSvmPayment(
-  'your-merchant-id',
-  window.solana  // Phantom wallet
+  'https://v402.onvoyage.ai/api/pay',
+  {
+    wallet: window.solana,          // Phantom wallet
+    network: 'solana-mainnet',      // or 'solana-devnet'
+    checkoutId: 'your-checkout-id',
+    additionalParams: { userId: '123' }  // Optional
+  }
 );
 ```
 
-#### `handleEvmPayment(merchantId, walletAdapter)`
+**Options:**
+- `wallet`: Solana wallet adapter (Phantom, Solflare, etc.)
+- `network`: Network name (e.g., 'solana-mainnet', 'solana-devnet')
+- `checkoutId`: Your checkout ID
+- `additionalParams`: Custom parameters for your callback API
+
+#### `handleEvmPayment(endpoint, options)`
 
 Handle Ethereum (EVM) chain payments.
 
@@ -463,27 +597,54 @@ Handle Ethereum (EVM) chain payments.
 import { handleEvmPayment } from '@voyage_ai/v402-web-ts';
 
 const response = await handleEvmPayment(
-  'your-merchant-id',
-  evmWalletAdapter  // Must implement WalletAdapter interface
+  'https://v402.onvoyage.ai/api/pay',
+  {
+    wallet: evmWalletAdapter,       // EVM wallet adapter
+    network: 'base-mainnet',        // Network name
+    checkoutId: 'your-checkout-id',
+    additionalParams: { userId: '123' }  // Optional
+  }
 );
 ```
+
+**Options:**
+- `wallet`: EVM wallet adapter (must implement EvmWalletAdapter interface)
+- `network`: Network name (e.g., 'ethereum-mainnet', 'base-mainnet', 'polygon-mainnet')
+- `checkoutId`: Your checkout ID
+- `additionalParams`: Custom parameters for your callback API
 
 ### Type Definitions
 
 ```typescript
-// Network Type
+// Network Type (用于区分钱包类型)
 enum NetworkType {
-  SOLANA = 'solana',
-  SVM = 'svm',
-  EVM = 'evm',
-  ETHEREUM = 'ethereum'
+  EVM = 'evm',      // Ethereum Virtual Machine
+  SVM = 'svm',      // Solana Virtual Machine
+  SOLANA = 'solana' // Alias for SVM
 }
 
-// Wallet Adapter Interface (for custom integration)
+// Solana Wallet Adapter Interface
 interface WalletAdapter {
-  getAddress: () => Promise<string>;
-  signTypedData?: (domain: any, types: any, value: any) => Promise<string>;
+  publicKey?: { toString(): string };
+  address?: string;
+  signTransaction: (tx: VersionedTransaction) => Promise<VersionedTransaction>;
+}
+
+// EVM Wallet Adapter Interface
+interface EvmWalletAdapter {
+  address: string;
+  signTypedData: (domain: any, types: any, message: any) => Promise<string>;
   switchChain?: (chainId: string) => Promise<void>;
+  getChainId?: () => Promise<string>;
+}
+
+// Payment Info from Backend
+interface PaymentInfo {
+  amount: string;
+  currency: string;
+  network: string;  // Network name (e.g., 'base-mainnet', 'solana-devnet')
+  asset: string;
+  maxAmountRequired: number;
 }
 ```
 
@@ -517,6 +678,46 @@ import { makePayment } from '@voyage_ai/v402-web-ts';
 
 ## 🔧 Advanced Usage
 
+### Multi-Network Support in One App
+
+The SDK supports EVM and SVM wallets coexisting in the same application.
+
+```tsx
+import { usePageNetwork, NetworkType } from '@voyage_ai/v402-web-ts/react';
+
+// Page 1: EVM Network
+function EthereumPage() {
+  const { address, networkType } = usePageNetwork(NetworkType.EVM);
+  
+  return (
+    <div>
+      <h2>Ethereum Payment Page</h2>
+      <p>Connected: {address}</p>
+      {/* EVM payment logic */}
+    </div>
+  );
+}
+
+// Page 2: SVM Network
+function SolanaPage() {
+  const { address, networkType } = usePageNetwork(NetworkType.SVM);
+  
+  return (
+    <div>
+      <h2>Solana Payment Page</h2>
+      <p>Connected: {address}</p>
+      {/* SVM payment logic */}
+    </div>
+  );
+}
+```
+
+**Key Features:**
+- ✅ Wallets cached separately per network
+- ✅ Switching pages automatically switches wallet
+- ✅ Disconnect on one network doesn't affect the other
+- ✅ Refresh page maintains correct network context
+
 ### Monitor Wallet State Changes
 
 ```typescript
@@ -535,15 +736,17 @@ function MyComponent() {
 }
 ```
 
-### Handle Payment Callback
+### Handle Payment Response
+
+The payment response includes both your callback API data and payment metadata:
 
 ```typescript
 const handlePayment = async () => {
   try {
-    const response = await makePayment(networkType, merchantId);
+    const response = await makePayment(networkType, checkoutId);
     const data = await response.json();
     
-    // data contains your callback API response
+    // data is your callback API response
     // For example:
     // {
     //   "success": true,
@@ -552,12 +755,17 @@ const handlePayment = async () => {
     //   "expiresAt": "2024-12-31"
     // }
     
+    // Payment metadata in response headers
+    const paymentResponse = response.headers.get('X-PAYMENT-RESPONSE');
+    if (paymentResponse) {
+      const paymentData = JSON.parse(paymentResponse);
+      console.log('Transaction Hash:', paymentData.txHash);
+    }
+    
     if (data.success) {
-      // Handle success logic
       showContent(data.content);
     }
   } catch (error) {
-    // Handle error
     console.error('Payment failed:', error);
   }
 };
@@ -566,55 +774,117 @@ const handlePayment = async () => {
 ### Error Handling
 
 ```typescript
-import { usePayment } from '@voyage_ai/v402-web-ts/react';
+import { useWallet, usePayment } from '@voyage_ai/v402-web-ts/react';
+import { useEffect } from 'react';
 
 function PaymentComponent() {
-  const { error, clearError } = usePayment();
+  const { error: walletError, clearError: clearWalletError } = useWallet();
+  const { error: paymentError, clearError: clearPaymentError } = usePayment();
   
   useEffect(() => {
-    if (error) {
-      // Show error message
-      alert(error);
+    if (walletError) {
+      console.error('Wallet error:', walletError);
+      // Handle wallet connection errors
+    }
+  }, [walletError]);
+  
+  useEffect(() => {
+    if (paymentError) {
+      console.error('Payment error:', paymentError);
+      // Handle payment errors
       
-      // Auto clear error after 3 seconds
+      // Auto clear after 3 seconds
       setTimeout(() => {
-        clearError();
+        clearPaymentError();
       }, 3000);
     }
-  }, [error]);
+  }, [paymentError]);
 }
 ```
 
-## 🌐 Supported Networks
+**Common Error Scenarios:**
+- Wallet not installed: `Please install MetaMask/Phantom wallet`
+- User rejected: `User rejected the connection/transaction`
+- Network mismatch: `Chain changed. Please reconnect your wallet.`
+- Insufficient funds: Backend returns payment failure
+- Invalid checkout: `Failed to load payment information`
 
-### Solana (SVM)
-- Solana Mainnet
-- Solana Devnet
+## 🌐 Network Types vs Network Names
 
-### Ethereum (EVM)
-- Ethereum Mainnet
-- Polygon
-- Base
-- Avalanche
-- BSC (Binance Smart Chain)
-- Arbitrum
-- Optimism
+### Important Distinction
+
+The SDK distinguishes between **Network Type** (wallet type) and **Network Name** (specific blockchain):
+
+#### Network Type (钱包类型)
+Used for wallet management - which wallet to connect:
+
+```typescript
+enum NetworkType {
+  EVM = 'evm',      // Ethereum Virtual Machine wallets (MetaMask, etc.)
+  SVM = 'svm',      // Solana Virtual Machine wallets (Phantom, etc.)
+  SOLANA = 'solana' // Alias for SVM
+}
+```
+
+**Usage:** `usePageNetwork(NetworkType.EVM)`, `connect(NetworkType.SVM)`
+
+#### Network Name (具体网络)
+Specific blockchain for the payment transaction:
+
+**SVM Networks:**
+- `solana-mainnet`
+- `solana-devnet`
+
+**EVM Networks:**
+- `ethereum-mainnet`
+- `base-mainnet`
+- `polygon-mainnet`
+- `avalanche-mainnet`
+- `bsc-mainnet` (Binance Smart Chain)
+- `arbitrum-mainnet`
+- `optimism-mainnet`
 - And other EVM-compatible chains
+
+**Usage:** Used in `handleSvmPayment()`, `handleEvmPayment()`, and backend payment configuration
+
+### Example
+
+```typescript
+// Network Type: EVM (which wallet to use)
+const { address } = usePageNetwork(NetworkType.EVM);
+
+// Network Name: base-mainnet (which blockchain to pay on)
+const response = await handleEvmPayment(endpoint, {
+  wallet: evmAdapter,
+  network: 'base-mainnet',  // ← Network Name
+  checkoutId: 'xxx'
+});
+```
 
 ## 📦 Dependencies
 
-### Peer Dependencies
+### Required Dependencies
 
 ```json
 {
   "react": ">=18.0.0",
   "@solana/web3.js": "^1.95.0",
   "@solana/spl-token": "^0.4.0",
-  "ethers": "^6.0.0"
+  "antd": "^5.0.0"  // For V402Checkout component
 }
 ```
 
-**Note**: If you only use Solana, you don't need to install `ethers`; if you only use EVM, you don't need Solana-related packages.
+### Optional Dependencies
+
+```json
+{
+  "ethers": "^6.0.0"  // Only needed if using EVM networks
+}
+```
+
+**Note**: 
+- If you only use `V402Checkout` component, all dependencies are included
+- For custom integration, install only the wallets you need (Solana or EVM)
 
 ## 🤝 Contributing
 
@@ -630,9 +900,72 @@ MIT License
 - [GitHub Repository](https://github.com/voyage_ai/v402-web-ts)
 - [npm Package](https://www.npmjs.com/package/@voyage_ai/v402-web-ts)
 
-## 💡 Example Project
+## 💡 Quick Examples
 
-Check out the complete example project: [v402pay-example](https://github.com/voyage_ai/v402pay-example)
+### Minimal Integration (1 Line)
+
+```tsx
+import { V402Checkout } from '@voyage_ai/v402-web-ts/react';
+import '@voyage_ai/v402-web-ts/react/styles.css';
+
+export default function App() {
+  return <V402Checkout checkoutId="your-checkout-id" />;
+}
+```
+
+### With Custom Callback
+
+```tsx
+import { V402Checkout } from '@voyage_ai/v402-web-ts/react';
+
+export default function App() {
+  return (
+    <V402Checkout 
+      checkoutId="your-checkout-id"
+      onPaymentComplete={(result) => {
+        // Redirect to success page
+        window.location.href = `/content/${result.contentId}`;
+      }}
+    />
+  );
+}
+```
+
+### Modal Mode
+
+```tsx
+import { useState } from 'react';
+import { V402Checkout } from '@voyage_ai/v402-web-ts/react';
+import { Modal } from 'antd';
+
+export default function App() {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  
+  return (
+    <>
+      <button onClick={() => setIsModalOpen(true)}>
+        Purchase Content
+      </button>
+      
+      <Modal 
+        open={isModalOpen} 
+        onCancel={() => setIsModalOpen(false)}
+        footer={null}
+        width={520}
+      >
+        <V402Checkout 
+          checkoutId="your-checkout-id"
+          isModal={true}
+          onPaymentComplete={(result) => {
+            setIsModalOpen(false);
+            // Handle success
+          }}
+        />
+      </Modal>
+    </>
+  );
+}
+```
 
 ---
 
