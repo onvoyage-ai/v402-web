@@ -175,7 +175,7 @@ export default function V402CheckoutV2({
                     className="relative rounded-2xl p-3 shadow-2xl w-full"
                     style={{
                         backgroundColor: primaryColor,
-                        boxShadow: `0 16px 48px -8px ${primaryColor}66, 0 8px 24px -4px rgba(0,0,0,0.3)`,
+                        boxShadow: `0 16px 48px -8px ${primaryColor}66, 0 8px 24px -4px rgba(0,0,0,0.3);padding-bottom: 0px`,
                     }}
                 >
                     {/* Paper Slot */}
@@ -315,12 +315,18 @@ export default function V402CheckoutV2({
                         onPayment={handlePayment}
                     />
 
-                    {/* Brand - 可配置 */}
+                    {/* Brand - 烙印风格 */}
                     {brandName && (
-                        <div className="text-center mt-3 mb-0.5">
+                        <div className="text-center mt-0 mb-0">
                             <div
-                                className="inline-block px-3 py-0.5 rounded-full text-xs font-bold tracking-[0.15em]"
-                                style={{backgroundColor: 'rgba(0,0,0,0.3)', color: 'rgba(255,255,255,0.9)'}}
+                                className="inline-block px-2 py-0.5 rounded text-[10px] font-mono font-bold tracking-[0.2em]"
+                                style={{
+                                    backgroundColor: '#1a1a1a',
+                                    color: '#9acd32',
+                                    boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.8), 0 1px 0 rgba(255,255,255,0.1)',
+                                    border: '1px solid rgba(0,0,0,0.5)',
+                                    textShadow: '0 0 4px #9acd3280',
+                                }}
                             >
                                 {brandName}
                             </div>
