@@ -5,7 +5,7 @@ import {usePaymentInfo} from "../../hooks/usePaymentInfo";
 import {usePageNetwork} from "../../hooks/usePageNetwork";
 import {usePayment} from "../../hooks/usePayment";
 import {PROD_BACK_URL} from "../../../types/common";
-import {formatAddress, makePayment} from "../../../utils";
+import {makePayment} from "../../../utils";
 import {WalletConnect} from '../wallet/WalletConnect';
 import {getNetworkIcon} from "../../utils/CryptoIcons";
 import {AnimationStyles} from "../../styles/animations";
@@ -194,13 +194,21 @@ export default function V402CheckoutV2({
                                     animation: 'pulse 2s ease-in-out infinite',
                                 }}
                             />
-                            <span className="text-xs font-mono font-bold tracking-wider" style={{color: 'rgba(0,0,0,0.7)'}}>
+                            <span className="text-xs font-mono font-bold tracking-wider"
+                                  style={{color: 'rgba(0,0,0,0.7)'}}>
                                 {getStatusText()}
                             </span>
                         </div>
-                        <span className="text-xs font-bold" style={{color: 'rgba(0,0,0,0.6)'}}>
-                            {address ? 'ONLINE' : 'OFFLINE'}
-                        </span>
+                        <div className="flex items-center gap-1.5">
+                            {paymentDetails && NetworkIcon && (
+                                <div className="flex items-center gap-1">
+                                    <NetworkIcon width={12} height={12} style={{color: 'rgba(0,0,0,0.7)'}}/>
+                                    <span className="text-xs font-mono font-bold" style={{color: 'rgba(0,0,0,0.7)'}}>
+                                        {paymentDetails.network}
+                                    </span>
+                                </div>
+                            )}
+                        </div>
                     </div>
 
                     {/* Screen */}
@@ -217,12 +225,12 @@ export default function V402CheckoutV2({
                             <div className="flex items-center gap-1.5 flex-1 min-w-0">
                                 <div className="w-2.5 h-2.5 rounded border border-green-700 flex-shrink-0"/>
                                 {title ? (
-                                    <span 
-                                        className="text-xs font-mono truncate" 
+                                    <span
+                                        className="text-xs font-mono"
                                         style={{color: '#22c55e80'}}
                                         title={title}
                                     >
-                                        {title}
+                                        {title.length > 26 ? `${title.slice(0, 13)}...${title.slice(-13)}` : title}
                                     </span>
                                 ) : (
                                     <span className="text-xs font-mono" style={{color: '#22c55e80'}}>
@@ -231,8 +239,10 @@ export default function V402CheckoutV2({
                                 )}
                             </div>
                             <div className="flex gap-0.5 flex-shrink-0">
-                                <div className="w-1 h-1.5 rounded-sm" style={{backgroundColor: address ? '#22c55e80' : '#22c55e30'}}/>
-                                <div className="w-1 h-1.5 rounded-sm" style={{backgroundColor: address ? '#22c55e80' : '#22c55e30'}}/>
+                                <div className="w-1 h-1.5 rounded-sm"
+                                     style={{backgroundColor: address ? '#22c55e80' : '#22c55e30'}}/>
+                                <div className="w-1 h-1.5 rounded-sm"
+                                     style={{backgroundColor: address ? '#22c55e80' : '#22c55e30'}}/>
                                 <div className="w-1 h-1.5 rounded-sm" style={{backgroundColor: '#22c55e80'}}/>
                             </div>
                         </div>
@@ -276,25 +286,22 @@ export default function V402CheckoutV2({
                                         {screenText}
                                     </div>
                                     {paymentDetails && (
-                                        <div className="grid grid-cols-2 gap-1.5 text-xs font-mono">
-                                            <div>
-                                                <div style={{color: '#22c55e60'}}>NETWORK</div>
-                                                <div className="flex items-center gap-1" style={{color: '#22c55e'}}>
-                                                    {NetworkIcon && <NetworkIcon width={12} height={12}/>}
-                                                    {paymentDetails.network}
+                                        <div className="text-xs font-mono">
+                                            {/* 第一行: AMOUNT 和 CURRENCY */}
+                                            <div className="grid grid-cols-2 gap-1.5 mb-1.5">
+                                                <div>
+                                                    <div style={{color: '#22c55e60'}}>AMOUNT</div>
+                                                    <div style={{color: '#22c55e'}}>${paymentDetails.amount}</div>
+                                                </div>
+                                                <div>
+                                                    <div style={{color: '#22c55e60'}}>CURRENCY</div>
+                                                    <div style={{color: '#22c55e'}}>{paymentDetails.currency}</div>
                                                 </div>
                                             </div>
-                                            <div>
-                                                <div style={{color: '#22c55e60'}}>CURRENCY</div>
-                                                <div style={{color: '#22c55e'}}>{paymentDetails.currency}</div>
-                                            </div>
-                                            <div>
-                                                <div style={{color: '#22c55e60'}}>AMOUNT</div>
-                                                <div style={{color: '#22c55e'}}>${paymentDetails.amount}</div>
-                                            </div>
+                                            {/* 第二行: WALLET 完整显示 */}
                                             <div>
                                                 <div style={{color: '#22c55e60'}}>WALLET</div>
-                                                <div style={{color: '#22c55e'}}>{formatAddress(address)}</div>
+                                                <div style={{color: '#22c55e', wordBreak: 'break-all'}}>{address}</div>
                                             </div>
                                         </div>
                                     )}
@@ -420,7 +427,8 @@ const TerminalButtons: React.FC<TerminalButtonsProps> = ({
                 ) : (
                     <>
                         <span className="font-mono tracking-wider text-sm">PAY</span>
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                             strokeWidth="2">
                             <path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/>
                         </svg>
                     </>
@@ -440,7 +448,7 @@ interface CircleButtonProps {
 
 const CircleButton: React.FC<CircleButtonProps> = ({onClick, disabled, title, size = 'normal', children}) => {
     const sizeClass = size === 'small' ? 'w-10 h-10' : 'w-12 h-12';
-    
+
     return (
         <button
             onClick={onClick}
