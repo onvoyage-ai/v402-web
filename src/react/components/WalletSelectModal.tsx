@@ -108,18 +108,37 @@ const walletIconStyle: React.CSSProperties = {
     backgroundColor: '#f5f5f5',
 };
 
-const walletIconPlaceholderStyle: React.CSSProperties = {
+// Generate a consistent color based on wallet name
+const getAvatarColor = (name: string): string => {
+    const colors = [
+        '#6366f1', // indigo
+        '#8b5cf6', // violet
+        '#ec4899', // pink
+        '#f43f5e', // rose
+        '#f97316', // orange
+        '#eab308', // yellow
+        '#22c55e', // green
+        '#14b8a6', // teal
+        '#06b6d4', // cyan
+        '#3b82f6', // blue
+    ];
+    // Use first char code to pick a consistent color
+    const index = name.charCodeAt(0) % colors.length;
+    return colors[index];
+};
+
+const getWalletIconPlaceholderStyle = (walletName: string): React.CSSProperties => ({
     width: '32px',
     height: '32px',
     borderRadius: '8px',
-    backgroundColor: '#e5e5e5',
+    backgroundColor: getAvatarColor(walletName),
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
     fontSize: '14px',
     fontWeight: 600,
-    color: '#666',
-};
+    color: '#ffffff',
+});
 
 const walletNameStyle: React.CSSProperties = {
     fontSize: '14px',
@@ -174,8 +193,8 @@ function WalletItem({
                     onError={() => setIconError(true)}
                 />
             ) : (
-                <div style={walletIconPlaceholderStyle}>
-                    {wallet.name.charAt(0)}
+                <div style={getWalletIconPlaceholderStyle(wallet.name)}>
+                    {wallet.name.charAt(0).toUpperCase()}
                 </div>
             )}
             <span style={walletNameStyle}>{wallet.name}</span>

@@ -119,31 +119,40 @@ export function initEVMWalletDiscovery(): void {
  */
 export function getEVMWallets(): WalletInfo[] {
   const wallets: WalletInfo[] = [];
+  const detectedNames = new Set<string>();
   
   evmWallets.forEach((detail, uuid) => {
-    wallets.push({
-      id: uuid,
-      name: detail.info.name,
-      icon: detail.info.icon,
-      networkType: NetworkType.EVM,
-      provider: detail.provider,
-      installed: true,
-    });
+    // Skip if wallet name already exists (avoid duplicates)
+    if (!detectedNames.has(detail.info.name)) {
+      wallets.push({
+        id: uuid,
+        name: detail.info.name,
+        icon: detail.info.icon,
+        networkType: NetworkType.EVM,
+        provider: detail.provider,
+        installed: true,
+      });
+      detectedNames.add(detail.info.name);
+    }
   });
 
   // Fallback: if no EIP-6963 wallets found, check for window.ethereum
   if (wallets.length === 0 && typeof window !== 'undefined' && (window as any).ethereum) {
     const ethereum = (window as any).ethereum;
-    wallets.push({
-      id: 'injected',
-      name: ethereum.isMetaMask ? 'MetaMask' : 
-            ethereum.isCoinbaseWallet ? 'Coinbase Wallet' : 
-            ethereum.isOkxWallet ? 'OKX Wallet' : 'Browser Wallet',
-      icon: '', // No icon for fallback
-      networkType: NetworkType.EVM,
-      provider: ethereum,
-      installed: true,
-    });
+    const walletName = ethereum.isMetaMask ? 'MetaMask' : 
+          ethereum.isCoinbaseWallet ? 'Coinbase Wallet' : 
+          ethereum.isOkxWallet ? 'OKX Wallet' : 'Browser Wallet';
+    
+    if (!detectedNames.has(walletName)) {
+      wallets.push({
+        id: 'injected',
+        name: walletName,
+        icon: '', // Will use first letter as avatar
+        networkType: NetworkType.EVM,
+        provider: ethereum,
+        installed: true,
+      });
+    }
   }
 
   return wallets;
@@ -166,16 +175,44 @@ export function getSolanaWallets(): WalletInfo[] {
   if (typeof window === 'undefined') return [];
 
   const wallets: WalletInfo[] = [];
+  const detectedProviders = new Set<any>();
+  const detectedNames = new Set<string>();
 
+  // First, detect known wallets from our list
   for (const wallet of SOLANA_WALLETS) {
     const provider = wallet.detect();
-    if (provider) {
+    if (provider && !detectedNames.has(wallet.name)) {
       wallets.push({
         id: wallet.id,
         name: wallet.name,
         icon: wallet.icon,
         networkType: NetworkType.SOLANA,
         provider,
+        installed: true,
+      });
+      detectedProviders.add(provider);
+      detectedNames.add(wallet.name);
+    }
+  }
+
+  // Fallback: detect any other Solana wallet not in our known list
+  // Check window.solana if it exists and wasn't already detected
+  const windowSolana = (window as any).solana;
+  if (windowSolana && !detectedProviders.has(windowSolana)) {
+    // Try to get wallet name from provider
+    const walletName = windowSolana.isPhantom ? 'Phantom' :
+                       windowSolana.isSolflare ? 'Solflare' :
+                       windowSolana.isBackpack ? 'Backpack' :
+                       windowSolana.walletName || 'Solana Wallet';
+    
+    // Only add if name not already detected
+    if (!detectedNames.has(walletName)) {
+      wallets.push({
+        id: 'solana-unknown',
+        name: walletName,
+        icon: '', // Will use first letter as avatar
+        networkType: NetworkType.SOLANA,
+        provider: windowSolana,
         installed: true,
       });
     }
