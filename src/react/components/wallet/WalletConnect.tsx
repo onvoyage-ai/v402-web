@@ -7,9 +7,9 @@
 'use client';
 
 import React, {useState} from 'react';
-import {NetworkType} from '../../types';
-import {formatAddress, getNetworkDisplayName, WalletInfo} from '../../utils';
-import {useWallet} from '../hooks/useWalletStore';
+import {NetworkType} from '../../../types';
+import {formatAddress, getNetworkDisplayName, WalletInfo} from '../../../utils';
+import {useWallet} from '../../hooks/useWalletStore';
 import {WalletSelectModal} from './WalletSelectModal';
 import {
     buttonsContainerStyle,
@@ -25,7 +25,7 @@ import {
     walletActionsStyle,
     walletAddressStyle,
     walletOptionStyle,
-} from '../styles/inline-styles';
+} from '../../styles/inline-styles';
 
 export interface WalletConnectProps {
   supportedNetworks?: NetworkType[];

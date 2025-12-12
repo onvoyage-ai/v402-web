@@ -9,14 +9,14 @@
 
 import React, {useEffect, useState} from 'react';
 import {createPortal} from 'react-dom';
-import {NetworkType} from '../../types';
+import {NetworkType} from '../../../types';
 import {
     getWalletsForNetwork,
     initEVMWalletDiscovery,
     onEVMWalletsChanged,
     WalletInfo,
-} from '../../utils/wallet-discovery';
-import {getNetworkDisplayName} from '../../utils';
+} from '../../../utils/wallet-discovery';
+import {getNetworkDisplayName} from '../../../utils';
 
 export interface WalletSelectModalProps {
     isOpen: boolean;
@@ -298,3 +298,4 @@ export function WalletSelectModal({
 
     return modalContent;
 }
+

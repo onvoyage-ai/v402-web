@@ -10,14 +10,14 @@ import {
     LockOutlined,
     SafetyOutlined
 } from '@ant-design/icons';
-import {usePaymentInfo} from "../hooks/usePaymentInfo";
-import {usePageNetwork} from "../hooks/usePageNetwork";
-import {usePayment} from "../hooks/usePayment";
-import {PROD_BACK_URL} from "../../types/common";
-import {formatAddress, makePayment} from "../../utils";
-import {WalletConnect} from './WalletConnect';
-import {NetworkType} from "../../types";
-import {getNetworkIcon} from "../utils/CryptoIcons";
+import {usePaymentInfo} from "../../hooks/usePaymentInfo";
+import {usePageNetwork} from "../../hooks/usePageNetwork";
+import {usePayment} from "../../hooks/usePayment";
+import {PROD_BACK_URL} from "../../../types/common";
+import {formatAddress, makePayment} from "../../../utils";
+import {WalletConnect} from '../wallet/WalletConnect';
+import {NetworkType} from "../../../types";
+import {getNetworkIcon} from "../../utils/CryptoIcons";
 
 const {Title, Text} = Typography;
 
