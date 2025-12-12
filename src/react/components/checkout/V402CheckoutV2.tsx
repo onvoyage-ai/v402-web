@@ -1,6 +1,6 @@
 'use client';
 
-import React, {useEffect, useMemo, useState} from 'react';
+import React, {useEffect, useState} from 'react';
 import {usePaymentInfo} from "../../hooks/usePaymentInfo";
 import {usePageNetwork} from "../../hooks/usePageNetwork";
 import {usePayment} from "../../hooks/usePayment";
@@ -58,8 +58,8 @@ export default function V402CheckoutV2({
     const [paymentDetails, setPaymentDetails] = useState<PaymentDetails | null>(null);
     const [showReceipt, setShowReceipt] = useState(false);
 
-    // 临时发票ID - 只在组件挂载时生成一次
-    const tempReceiptId = useMemo(() => generateRandomId(), []);
+    // 临时发票ID - 每次支付生成新的
+    const [tempReceiptId, setTempReceiptId] = useState(() => generateRandomId());
 
     // ============ Handlers ============
 
@@ -73,6 +73,8 @@ export default function V402CheckoutV2({
     const handlePayment = async () => {
         if (!networkType) return;
 
+        // 每次支付生成新的临时发票ID
+        setTempReceiptId(generateRandomId());
         setResult(null);
         setError(null);
         setIsProcessing(true);
