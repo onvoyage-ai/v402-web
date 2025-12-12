@@ -56,7 +56,7 @@ export const Receipt: React.FC<ReceiptProps> = ({
         ? result.transactionHash.slice(-8).toUpperCase() 
         : tempReceiptId;
 
-    // 根据状态获取动画样式
+    // 根据状态获取外层动画样式
     const getAnimationStyles = (): React.CSSProperties => {
         const baseTransition = animationState === 'bounce'
             ? 'all 0.15s cubic-bezier(0.34, 1.56, 0.64, 1)'
@@ -67,18 +67,14 @@ export const Receipt: React.FC<ReceiptProps> = ({
                 return {
                     opacity: 0,
                     transform: 'translateY(50px)',
-                    maxHeight: 0,
                     marginBottom: 0,
-                    overflow: 'hidden',
                     transition: baseTransition,
                 };
             case 'printing':
                 return {
                     opacity: 1,
                     transform: 'translateY(0)',
-                    maxHeight: '80px',
-                    marginBottom: '8px',
-                    overflow: 'hidden',
+                    marginBottom: '-4px', // 负边距让小票贴着机器，还没撕开的感觉
                     animation: 'receiptShake 0.12s ease-in-out infinite',
                     transition: baseTransition,
                 };
@@ -86,17 +82,42 @@ export const Receipt: React.FC<ReceiptProps> = ({
                 return {
                     opacity: 1,
                     transform: 'translateY(0)',
-                    maxHeight: '600px',
                     marginBottom: '8px',
-                    overflow: 'visible',
                     transition: baseTransition,
                 };
             case 'bounce':
                 return {
                     opacity: 1,
                     transform: 'translateY(-8px)',
-                    maxHeight: '600px',
                     marginBottom: '8px',
+                    transition: baseTransition,
+                };
+            default:
+                return {};
+        }
+    };
+
+    // 根据状态获取内容区域高度样式
+    const getContentStyles = (): React.CSSProperties => {
+        const baseTransition = 'all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)';
+        
+        switch (animationState) {
+            case 'hidden':
+                return {
+                    maxHeight: 0,
+                    overflow: 'hidden',
+                    transition: baseTransition,
+                };
+            case 'printing':
+                return {
+                    maxHeight: '80px',
+                    overflow: 'hidden',
+                    transition: baseTransition,
+                };
+            case 'visible':
+            case 'bounce':
+                return {
+                    maxHeight: '600px',
                     overflow: 'visible',
                     transition: baseTransition,
                 };
@@ -114,7 +135,7 @@ export const Receipt: React.FC<ReceiptProps> = ({
         >
             {/* 发票主体 */}
             <div
-                className="relative bg-white rounded-sm shadow-2xl"
+                className="relative bg-white shadow-2xl"
                 style={{
                     width: '75%',
                     maxWidth: '280px',
@@ -129,30 +150,67 @@ export const Receipt: React.FC<ReceiptProps> = ({
                     `,
                 }}
             >
-                {/* 撕边效果 */}
+                {/* 顶部锯齿效果 */}
                 <div
-                    className="absolute bottom-0 left-0 right-0 h-3"
+                    className="absolute top-0 left-0 right-0"
                     style={{
-                        background: `linear-gradient(135deg, transparent 33.33%, white 33.33%, white 66.67%, transparent 66.67%),
-                                     linear-gradient(-135deg, transparent 33.33%, white 33.33%, white 66.67%, transparent 66.67%)`,
-                        backgroundSize: '8px 8px',
-                        backgroundPosition: '0 0',
-                        transform: 'translateY(100%)',
+                        height: '8px',
+                        transform: 'translateY(-100%)',
+                        background: `radial-gradient(circle at 50% 100%, white 5px, transparent 5px)`,
+                        backgroundSize: '12px 8px',
+                        backgroundPosition: '6px 0',
+                        backgroundRepeat: 'repeat-x',
                     }}
                 />
+                {/* 顶部白色填充条 */}
+                <div
+                    className="absolute left-0 right-0 bg-white"
+                    style={{
+                        height: '4px',
+                        top: '-4px',
+                    }}
+                />
+
+                {/* 底部锯齿效果 - 只在小票撕下来后显示（非loading状态） */}
+                {!isLoading && (
+                    <>
+                        <div
+                            className="absolute bottom-0 left-0 right-0"
+                            style={{
+                                height: '8px',
+                                transform: 'translateY(100%)',
+                                background: `radial-gradient(circle at 50% 0%, white 5px, transparent 5px)`,
+                                backgroundSize: '12px 8px',
+                                backgroundPosition: '6px 0',
+                                backgroundRepeat: 'repeat-x',
+                            }}
+                        />
+                        {/* 底部白色填充条 */}
+                        <div
+                            className="absolute left-0 right-0 bg-white"
+                            style={{
+                                height: '4px',
+                                bottom: '-4px',
+                            }}
+                        />
+                    </>
+                )}
 
                 {/* 关闭按钮 - 只在完成后显示 */}
                 {!isLoading && (result || error) && (
                     <button
                         onClick={onClose}
-                        className="absolute top-2 right-2 w-6 h-6 flex items-center justify-center text-gray-400 hover:text-gray-600 transition-colors text-lg"
+                        className="absolute top-3 right-3 text-gray-300 hover:text-gray-500 transition-colors bg-transparent border-none outline-none p-0 cursor-pointer"
+                        style={{ background: 'none', border: 'none' }}
                     >
-                        ×
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                            <path d="M18 6L6 18M6 6l12 12"/>
+                        </svg>
                     </button>
                 )}
 
-                {/* 发票内容 */}
-                <div className="p-4 font-mono text-sm">
+                {/* 发票内容 - 应用高度动画 */}
+                <div className="p-4 font-mono text-sm" style={getContentStyles()}>
                     {/* 标题 */}
                     <div className="text-center mb-3">
                         <div className="text-base font-bold tracking-wider text-gray-800">
@@ -196,7 +254,15 @@ export const Receipt: React.FC<ReceiptProps> = ({
                     <Barcode/>
 
                     <div className="text-center text-xs text-gray-400 mt-1 tracking-widest">
-                        POWERED BY V402PAY
+                        POWERED BY{' '}
+                        <a 
+                            href="https://v402pay.onvoyage.ai" 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="text-gray-500 hover:text-gray-700 underline transition-colors"
+                        >
+                            V402PAY
+                        </a>
                     </div>
                 </div>
             </div>
@@ -299,13 +365,19 @@ const SuccessContent: React.FC<SuccessContentProps> = ({
                     <span className="text-gray-500">Response:</span>
                     <button
                         onClick={handleCopy}
-                        className="text-xs px-2 py-0.5 rounded transition-colors"
-                        style={{
-                            backgroundColor: copied ? '#22c55e' : '#f3f4f6',
-                            color: copied ? 'white' : '#6b7280',
-                        }}
+                        className="text-gray-300 hover:text-gray-500 transition-colors flex items-center gap-1 bg-transparent border-none outline-none p-0 cursor-pointer"
+                        style={{ background: 'none', border: 'none' }}
                     >
-                        {copied ? '✓ Copied' : 'Copy'}
+                        {copied ? (
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                                <path d="M20 6L9 17l-5-5"/>
+                            </svg>
+                        ) : (
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                                <rect x="9" y="9" width="13" height="13" rx="2"/>
+                                <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
+                            </svg>
+                        )}
                     </button>
                 </div>
                 <pre
