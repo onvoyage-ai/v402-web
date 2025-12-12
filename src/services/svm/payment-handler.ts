@@ -9,7 +9,7 @@ import type {SvmClientConfig} from "../../types";
 import {SolanaNetworkSchema} from "../../types";
 import type {PaymentRequirements, x402Response} from "x402/types";
 import {createSvmPaymentHeader, getDefaultSolanaRpcUrl} from "./payment-header";
-import {PaymentOperationError, wrapPaymentError} from "../../utils";
+import {IGNORED_402_ERRORS, PAYMENT_ERROR_MESSAGES, PaymentOperationError, wrapPaymentError,} from "../../utils";
 
 /**
  * Handle SVM payment with automatic x402 flow
@@ -37,7 +37,7 @@ export async function handleSvmPayment(
     config: SvmClientConfig,
     requestInit?: RequestInit
 ): Promise<Response> {
-    const {wallet, network, rpcUrl, maxPaymentAmount} = config;
+    const { wallet, rpcUrl, maxPaymentAmount } = config;
 
     // 1. Make initial request
     const initialResponse = await fetch(endpoint, {
@@ -55,32 +55,11 @@ export async function handleSvmPayment(
 
     // 3. Check if backend returned an error (e.g., insufficient_funds, verification_failed)
     // Skip errors that are part of normal 402 flow (initial request without X-PAYMENT)
-    const IGNORED_ERRORS = [
-        'X-PAYMENT header is required',
-        'missing X-PAYMENT header',
-        'payment_required',
-    ];
-    
-    if (rawResponse.error && !IGNORED_ERRORS.includes(rawResponse.error)) {
+    if (rawResponse.error && !IGNORED_402_ERRORS.includes(rawResponse.error as typeof IGNORED_402_ERRORS[number])) {
         console.error(`❌ Payment verification failed: ${rawResponse.error}`);
-        
-        // Map backend error codes to user-friendly messages
-        const ERROR_MESSAGES: Record<string, string> = {
-            'insufficient_funds': 'Insufficient balance to complete this payment',
-            'invalid_signature': 'Invalid payment signature',
-            'expired': 'Payment authorization has expired',
-            'already_used': 'This payment has already been used',
-            'network_mismatch': 'Payment network does not match',
-            'invalid_payment': 'Invalid payment data',
-            'verification_failed': 'Payment verification failed',
-            'invalid_exact_svm_payload_transaction_simulation_failed': 'Transaction simulation failed due to insufficient balance. Please check your wallet balance carefully and ensure you have enough funds to cover the payment and transaction fees.',
-        };
-        
-        const errorMessage = ERROR_MESSAGES[rawResponse.error] || 
-                            `Payment failed: ${rawResponse.error}`;
-        
-        const error = new Error(errorMessage);
-        throw wrapPaymentError(error);
+        const errorMessage = PAYMENT_ERROR_MESSAGES[rawResponse.error] ||
+            `Payment failed: ${rawResponse.error}`;
+        throw wrapPaymentError(new Error(errorMessage));
     }
 
     const x402Version: number = rawResponse.x402Version;
@@ -142,39 +121,17 @@ export async function handleSvmPayment(
     };
 
     const retryResponse = await fetch(endpoint, newInit);
-    
+
     // 9. Check if retry still returned 402 with error (e.g., verification failed)
     if (retryResponse.status === 402) {
         try {
             const retryData = await retryResponse.json();
-            
-            // Skip normal 402 errors (shouldn't happen at this point, but be safe)
-            const IGNORED_ERRORS = [
-                'X-PAYMENT header is required',
-                'missing X-PAYMENT header',
-                'payment_required',
-            ];
-            
-            if (retryData.error && !IGNORED_ERRORS.includes(retryData.error)) {
+
+            if (retryData.error && !IGNORED_402_ERRORS.includes(retryData.error as typeof IGNORED_402_ERRORS[number])) {
                 console.error(`❌ Payment verification failed: ${retryData.error}`);
-                
-                // Map backend error codes to user-friendly messages
-                const ERROR_MESSAGES: Record<string, string> = {
-                    'insufficient_funds': 'Insufficient balance to complete this payment',
-                    'invalid_signature': 'Invalid payment signature',
-                    'expired': 'Payment authorization has expired',
-                    'already_used': 'This payment has already been used',
-                    'network_mismatch': 'Payment network does not match',
-                    'invalid_payment': 'Invalid payment data',
-                    'verification_failed': 'Payment verification failed',
-                    'invalid_exact_svm_payload_transaction_simulation_failed': 'Transaction simulation failed due to insufficient balance. Please check your wallet balance carefully and ensure you have enough funds to cover the payment and transaction fees.',
-                };
-                
-                const errorMessage = ERROR_MESSAGES[retryData.error] || 
-                                    `Payment failed: ${retryData.error}`;
-                
-                const error = new Error(errorMessage);
-                throw wrapPaymentError(error);
+                const errorMessage = PAYMENT_ERROR_MESSAGES[retryData.error] ||
+                    `Payment failed: ${retryData.error}`;
+                throw wrapPaymentError(new Error(errorMessage));
             }
         } catch (error: any) {
             // If error is already wrapped, re-throw it
@@ -185,7 +142,7 @@ export async function handleSvmPayment(
             console.warn('⚠️ Could not parse retry 402 response:', error);
         }
     }
-    
+
     return retryResponse;
 }
 
@@ -212,4 +169,3 @@ export function createSvmPaymentFetch(
         return handleSvmPayment(endpoint, config, init);
     };
 }
-

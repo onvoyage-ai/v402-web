@@ -5,6 +5,30 @@
  * Provides user-friendly error messages for common issues
  */
 
+/**
+ * Error messages that should be ignored during 402 flow
+ * These are part of normal payment flow (initial request without X-PAYMENT)
+ */
+export const IGNORED_402_ERRORS = [
+    'X-PAYMENT header is required',
+    'missing X-PAYMENT header',
+    'payment_required',
+] as const;
+
+/**
+ * Map backend error codes to user-friendly messages
+ */
+export const PAYMENT_ERROR_MESSAGES: Record<string, string> = {
+    'insufficient_funds': 'Insufficient balance to complete this payment',
+    'invalid_signature': 'Invalid payment signature',
+    'expired': 'Payment authorization has expired',
+    'already_used': 'This payment has already been used',
+    'network_mismatch': 'Payment network does not match',
+    'invalid_payment': 'Invalid payment data',
+    'verification_failed': 'Payment verification failed',
+    'invalid_exact_svm_payload_transaction_simulation_failed': 'Transaction simulation failed due to insufficient balance. Please check your wallet balance carefully and ensure you have enough funds to cover the payment and transaction fees.',
+};
+
 export interface PaymentError {
   code: string;
   message: string;

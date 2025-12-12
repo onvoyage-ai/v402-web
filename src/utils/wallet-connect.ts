@@ -8,7 +8,6 @@ import {
   clearWalletDisconnection,
   getCachedWalletAddress,
   getConnectedNetworkType as getStoredNetworkType,
-  isWalletManuallyDisconnected as checkManualDisconnect,
   markWalletDisconnected,
   removeWalletAddress,
   saveConnectedNetworkType,
@@ -247,12 +246,4 @@ export async function switchNetwork(networkType: NetworkType): Promise<string | 
   // 如果没有缓存或验证失败，返回 null 表示需要重新连接
   return null;
 }
-
-/**
- * Re-export for convenience
- */
-export {getStoredNetworkType as getConnectedNetworkType};
-export {checkManualDisconnect as isWalletManuallyDisconnected};
-export {getCachedWalletAddress, saveWalletAddress, removeWalletAddress};
-export {getAllWalletAddresses} from './wallet';
 

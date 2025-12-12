@@ -3,11 +3,27 @@ import {defineConfig, Options} from 'tsup';
 // 检查是否为 release 构建（通过环境变量控制）
 const isRelease = process.env.BUILD_ENV === 'production';
 
+// 共享的 external 依赖列表
+const externalDeps = [
+    'react',
+    'react-dom',
+    '@solana/kit',
+    '@solana-program/token',
+    '@solana-program/token-2022',
+    '@solana-program/compute-budget',
+    'ethers',
+    'x402',
+    'viem',
+    'zod',
+    'antd',
+    '@ant-design/icons',
+];
+
 const baseConfig: Partial<Options> = {
     dts: true,
     sourcemap: true,
     format: ['cjs', 'esm'],
-    external: ['react', '@solana/web3.js', '@solana/spl-token', 'ethers', 'x402', 'viem', 'zod', 'antd', '@ant-design/icons'],
+    external: externalDeps,
     // 非 release 环境替换 PROD_BACK_URL 为 localhost，release 环境保持生产 URL
     esbuildOptions(options) {
         options.define = {
@@ -33,7 +49,8 @@ export default defineConfig([
         outDir: 'dist/react',
         // 保持 CSS 作为外部依赖，由打包工具处理，同时保留 define 配置
         esbuildOptions(options) {
-            options.external = [...(options.external || []), '*.css'];
+            // 确保继承所有 external 依赖，并添加 CSS
+            options.external = [...externalDeps, '*.css'];
             options.define = {
                 ...(options.define || {}),
                 '__PROD_BACK_URL__': !isRelease 
@@ -43,4 +60,3 @@ export default defineConfig([
         },
     },
 ]);
-

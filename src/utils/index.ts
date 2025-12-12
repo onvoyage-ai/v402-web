@@ -68,5 +68,7 @@ export {
   wrapPaymentError,
   PaymentOperationError,
   PaymentErrorCode,
+  IGNORED_402_ERRORS,
+  PAYMENT_ERROR_MESSAGES,
   type PaymentError,
 } from "./payment-error-handler";

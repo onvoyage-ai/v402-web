@@ -868,9 +868,12 @@ const response = await handleEvmPayment(endpoint, {
 ```json
 {
   "react": ">=18.0.0",
-  "@solana/web3.js": "^1.95.0",
-  "@solana/spl-token": "^0.4.0",
-  "antd": "^5.0.0"  // For V402Checkout component
+  "@solana/kit": "^3.0.0",
+  "@solana-program/token": "^0.6.0",
+  "@solana-program/token-2022": "^0.4.0",
+  "@solana-program/compute-budget": "^0.8.0",
+  "@solana-program/system": "^0.8.0",
+  "antd": "^5.0.0" 
 }
 ```
 
@@ -878,13 +881,14 @@ const response = await handleEvmPayment(endpoint, {
 
 ```json
 {
-  "ethers": "^6.0.0"  // Only needed if using EVM networks
+  "ethers": "^6.0.0" 
 }
 ```
 
 **Note**: 
 - If you only use `V402Checkout` component, all dependencies are included
 - For custom integration, install only the wallets you need (Solana or EVM)
+- Solana dependencies use the new `@solana/kit` unified SDK for better performance and smaller bundle size
 
 ## 🤝 Contributing
 

@@ -3,11 +3,9 @@
  * Framework-agnostic types that work across different wallet implementations
  */
 
-import {VersionedTransaction} from "@solana/web3.js";
-
 /**
  * Generic wallet adapter interface - works with any wallet provider
- * Compatible with Anza wallet-adapter, Privy, and custom implementations
+ * Compatible with Anza wallet-adapter, Privy, @solana/kit, and custom implementations
  */
 export interface WalletAdapter {
     // Anza wallet-adapter standard
@@ -17,7 +15,8 @@ export interface WalletAdapter {
     address?: string;
 
     // Transaction signing - required for payment authorization
-    signTransaction: (tx: VersionedTransaction) => Promise<VersionedTransaction>;
+    // Accepts compiled transaction from @solana/kit and returns signed transaction
+    signTransaction: <T>(tx: T) => Promise<T>;
 }
 
 /**
