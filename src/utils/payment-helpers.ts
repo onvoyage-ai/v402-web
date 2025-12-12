@@ -70,6 +70,7 @@ export function getSupportedNetworkTypes(paymentRequirements: PaymentRequirement
  * @param networkType - Network type (from useWallet)
  * @param merchantId - @see our website to apply
  * @param additionalParams - Optional additional parameters to send with the request (default: {})
+ * @param expectedAddress - Optional expected wallet address for validation
  * @returns Response from the payment
  *
  * @example
@@ -80,12 +81,13 @@ export function getSupportedNetworkTypes(paymentRequirements: PaymentRequirement
  *
  * @example
  * ```tsx
- * // With additional parameters
+ * // With additional parameters and address validation
  * const response = await makePayment(
  *   '/api/endpoint',
  *   networkType,
  *   merchantId,
- *   { userId: '123', customField: 'value' }
+ *   { userId: '123', customField: 'value' },
+ *   walletAddress  // Pass the expected address for validation
  * );
  * ```
  */
@@ -94,6 +96,7 @@ export async function makePayment(
     merchantId: string,
     endpoint: string = PROD_BACK_URL,
     additionalParams?: Record<string, any>,
+    expectedAddress?: string,
 ): Promise<Response> {
     // 使用新变量而不是修改参数
     const fullEndpoint = `${endpoint}/${merchantId}`;
@@ -113,11 +116,22 @@ export async function makePayment(
         // Solana payment - use the selected wallet provider
         const solana = getWalletProviderForPayment(networkType);
         if (!solana) {
-            throw new Error('请先连接 Solana 钱包');
+            throw new Error('Please connect your Solana wallet first.');
         }
 
         if (!solana.isConnected) {
             await solana.connect();
+        }
+
+        // Validate address if provided
+        if (expectedAddress && solana.publicKey) {
+            const currentAddress = solana.publicKey.toString();
+            if (currentAddress !== expectedAddress) {
+                throw new Error(
+                    `Wallet account mismatch: the current wallet account is ${currentAddress.slice(0, 8)}...，` +
+                    `But the desired account is ${expectedAddress.slice(0, 8)}.... Please switch to the correct account in your wallet.`
+                );
+            }
         }
 
         response = await handleSvmPayment(fullEndpoint, {
@@ -128,14 +142,23 @@ export async function makePayment(
         // EVM payment - use the selected wallet provider
         const ethereum = getWalletProviderForPayment(networkType);
         if (!ethereum) {
-            throw new Error('请先连接 EVM 钱包');
+            throw new Error('Please connect the EVM wallet first');
         }
 
         const provider = new ethers.BrowserProvider(ethereum);
         const signer = await provider.getSigner();
+        const currentAddress = await signer.getAddress();
+
+        // Validate address if provided
+        if (expectedAddress && currentAddress.toLowerCase() !== expectedAddress.toLowerCase()) {
+            throw new Error(
+                `Wallet account mismatch: the current wallet account is ${currentAddress.slice(0, 8)}...，` +
+                `But the desired account is ${expectedAddress.slice(0, 8)}.... Please switch to the correct account in your wallet.`
+            );
+        }
 
         const wallet = {
-            address: await signer.getAddress(),
+            address: currentAddress,
             signTypedData: async (domain: any, types: any, message: any) => {
                 return await signer.signTypedData(domain, types, message);
             },
@@ -159,7 +182,7 @@ export async function makePayment(
             network: 'base', // Will use backend's network configuration
         }, requestInit);
     } else {
-        throw new Error(`不支持的网络类型: ${networkType}`);
+        throw new Error(`Unsupported network types: ${networkType}`);
     }
 
     return response;

@@ -236,8 +236,8 @@ class WalletStore {
   async disconnect(): Promise<void> {
     const currentNetwork = this.state.networkType;
 
-    // Clear the connected wallet provider
-    clearConnectedWallet();
+    // Clear the connected wallet provider (pass networkType to clear from localStorage)
+    clearConnectedWallet(currentNetwork || undefined);
 
     if (currentNetwork) {
       // 先调用真正的钱包断开方法

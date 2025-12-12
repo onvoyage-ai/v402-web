@@ -22,6 +22,11 @@ export {
   getCachedWalletAddress,
   removeWalletAddress,
   clearAllWalletAddresses,
+  // 钱包 ID 缓存 (用于支付时恢复正确的 provider)
+  getAllConnectedWalletIds,
+  saveConnectedWalletId,
+  getConnectedWalletId,
+  removeConnectedWalletId,
 } from "./wallet";
 
 // Wallet connection utilities (for demo/UI)
@@ -42,6 +47,7 @@ export {
   getSolanaWallets,
   getWalletsForNetwork,
   getWalletById,
+  getWalletByName,
   connectToWallet,
   onEVMWalletsChanged,
   // Provider management for payments
@@ -49,6 +55,7 @@ export {
   setCurrentConnectedWallet,
   clearConnectedWallet,
   getWalletProviderForPayment,
+  getValidatedWalletProvider,
   type WalletInfo,
   type EIP6963ProviderInfo,
   type EIP6963ProviderDetail,

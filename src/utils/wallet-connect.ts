@@ -211,7 +211,8 @@ export async function disconnectWallet(networkType?: NetworkType, clearAll: bool
 
 /**
  * Get current wallet address
- * 优先从缓存读取，如果缓存存在则验证其有效性
+ * 优先从缓存读取，缓存是用户明确连接时保存的，应该被信任
+ * 注意：此函数不会自动更新缓存，缓存的更新应该只在用户明确连接时发生
  */
 export async function getCurrentWallet(networkType?: NetworkType): Promise<string | null> {
   if (typeof window === 'undefined') {
@@ -223,47 +224,43 @@ export async function getCurrentWallet(networkType?: NetworkType): Promise<strin
     return null;
   }
 
-  // 先尝试从缓存读取
+  // 从缓存读取 - 缓存是用户明确选择的钱包地址
   const cachedAddress = getCachedWalletAddress(type);
   
-  try {
-    let currentAddress: string | null = null;
-    
-    switch (type) {
-      case NetworkType.EVM: {
-        if (!(window as any).ethereum) return cachedAddress;
+  // 对于 EVM 钱包，直接返回缓存地址
+  // 因为 eth_accounts 返回的是 MetaMask 当前选中的账户，
+  // 而不是用户在应用中选择连接的账户
+  // 缓存地址是用户明确连接时保存的，应该被信任
+  if (type === NetworkType.EVM) {
+    if (cachedAddress) {
+      return cachedAddress;
+    }
+    // 没有缓存时，检查钱包当前状态
+    if ((window as any).ethereum) {
+      try {
         const accounts = await (window as any).ethereum.request({
           method: 'eth_accounts',
           params: [],
         });
-        currentAddress = accounts && accounts.length > 0 ? accounts[0] : null;
-        break;
+        return accounts && accounts.length > 0 ? accounts[0] : null;
+      } catch (error) {
+        console.error('Failed to get EVM accounts:', error);
+        return null;
       }
-
-      case NetworkType.SOLANA:
-      case NetworkType.SVM: {
-        const solana = (window as any).solana;
-        if (!solana || !solana.isConnected) return cachedAddress;
-        currentAddress = solana.publicKey?.toString() || null;
-        break;
-      }
-
-      default:
-        return cachedAddress;
     }
-
-    // 如果钱包返回的地址与缓存不一致，更新缓存
-    if (currentAddress && currentAddress !== cachedAddress) {
-      saveWalletAddress(type, currentAddress);
-    }
-    
-    // 如果钱包没有返回地址但有缓存，返回缓存（钱包可能暂时未连接但用户没有断开）
-    return currentAddress || cachedAddress;
-  } catch (error) {
-    console.error('Failed to get current wallet:', error);
-    // 如果出错，返回缓存的地址
-    return cachedAddress;
+    return null;
   }
+  
+  // 对于 Solana 钱包，需要验证连接状态
+  if (type === NetworkType.SOLANA || type === NetworkType.SVM) {
+    const solana = (window as any).solana;
+    if (!solana || !solana.isConnected) {
+      return cachedAddress;
+    }
+    return solana.publicKey?.toString() || cachedAddress;
+  }
+
+  return cachedAddress;
 }
 
 /**

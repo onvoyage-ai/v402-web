@@ -7,6 +7,7 @@
  */
 
 import { NetworkType } from '../types';
+import { getConnectedWalletId, saveConnectedWalletId, removeConnectedWalletId } from './wallet';
 
 // EIP-6963 types
 export interface EIP6963ProviderInfo {
@@ -245,6 +246,15 @@ export function getWalletById(id: string, networkType: NetworkType): WalletInfo 
 }
 
 /**
+ * Get a specific wallet by name
+ * More reliable than getWalletById for EVM wallets since EIP-6963 UUIDs may change
+ */
+export function getWalletByName(name: string, networkType: NetworkType): WalletInfo | null {
+  const wallets = getWalletsForNetwork(networkType);
+  return wallets.find(w => w.name === name) || null;
+}
+
+/**
  * Connect to a specific EVM wallet
  */
 export async function connectEVMWallet(wallet: WalletInfo): Promise<string> {
@@ -306,6 +316,10 @@ export async function connectToWallet(wallet: WalletInfo): Promise<string> {
   // Save the connected wallet for payment signing
   currentConnectedWallet = wallet;
   
+  // Save wallet name to localStorage for persistence across page refreshes
+  // Using name instead of ID because EIP-6963 UUIDs may change across page loads
+  saveConnectedWalletId(wallet.networkType, wallet.name);
+  
   return address;
 }
 
@@ -329,8 +343,33 @@ export function setCurrentConnectedWallet(wallet: WalletInfo | null): void {
  * Clear the connected wallet
  * Called on disconnect
  */
-export function clearConnectedWallet(): void {
+export function clearConnectedWallet(networkType?: NetworkType): void {
+  if (networkType) {
+    // Clear wallet ID from localStorage
+    removeConnectedWalletId(networkType);
+  }
   currentConnectedWallet = null;
+}
+
+/**
+ * Restore connected wallet from localStorage
+ * Called when currentConnectedWallet is null but we have a saved wallet name
+ */
+function restoreConnectedWallet(networkType: NetworkType): WalletInfo | null {
+  const savedWalletName = getConnectedWalletId(networkType);
+  if (!savedWalletName) return null;
+  
+  // Find the wallet by name (more reliable than ID for EIP-6963 wallets)
+  const wallet = getWalletByName(savedWalletName, networkType);
+  if (wallet) {
+    // Restore to memory
+    currentConnectedWallet = wallet;
+    console.log(`✅ Restored wallet provider: ${wallet.name}`);
+    return wallet;
+  }
+  
+  console.warn(`⚠️ Could not find wallet with name: ${savedWalletName}`);
+  return null;
 }
 
 /**
@@ -342,6 +381,12 @@ export function getWalletProviderForPayment(networkType: NetworkType): any {
   // If we have a connected wallet of the matching type, use its provider
   if (currentConnectedWallet && currentConnectedWallet.networkType === networkType) {
     return currentConnectedWallet.provider;
+  }
+  
+  // Try to restore from localStorage (e.g., after page refresh)
+  const restoredWallet = restoreConnectedWallet(networkType);
+  if (restoredWallet) {
+    return restoredWallet.provider;
   }
   
   // Fallback to default providers
@@ -358,7 +403,61 @@ export function getWalletProviderForPayment(networkType: NetworkType): any {
   }
 }
 
+/**
+ * Get the wallet provider for payment with address validation
+ * Ensures the provider's current account matches the expected address
+ * 
+ * @param networkType - Network type
+ * @param expectedAddress - The address we expect to use for payment
+ * @returns The provider if valid, null if mismatch
+ */
+export async function getValidatedWalletProvider(
+  networkType: NetworkType, 
+  expectedAddress: string
+): Promise<{ provider: any; isValid: boolean; currentAddress?: string }> {
+  const provider = getWalletProviderForPayment(networkType);
+  if (!provider) {
+    return { provider: null, isValid: false };
+  }
+  
+  // For EVM, check if the current account matches
+  if (networkType === NetworkType.EVM) {
+    try {
+      const accounts = await provider.request({ method: 'eth_accounts', params: [] });
+      const currentAddress = accounts?.[0];
+      const isValid = currentAddress?.toLowerCase() === expectedAddress?.toLowerCase();
+      
+      if (!isValid) {
+        console.warn(`⚠️ Account mismatch: expected ${expectedAddress}, got ${currentAddress}`);
+      }
+      
+      return { provider, isValid, currentAddress };
+    } catch (error) {
+      console.error('Failed to get current account:', error);
+      return { provider, isValid: false };
+    }
+  }
+  
+  // For Solana, check if connected and address matches
+  if (networkType === NetworkType.SOLANA || networkType === NetworkType.SVM) {
+    if (provider.isConnected && provider.publicKey) {
+      const currentAddress = provider.publicKey.toString();
+      const isValid = currentAddress === expectedAddress;
+      
+      if (!isValid) {
+        console.warn(`⚠️ Account mismatch: expected ${expectedAddress}, got ${currentAddress}`);
+      }
+      
+      return { provider, isValid, currentAddress };
+    }
+    return { provider, isValid: false };
+  }
+  
+  return { provider, isValid: true };
+}
+
 // Initialize on import (browser only)
 if (typeof window !== 'undefined') {
   initEVMWalletDiscovery();
 }
+

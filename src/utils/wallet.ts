@@ -11,6 +11,7 @@ const WALLET_DISCONNECTED_KEY = 'wallet_manually_disconnected';
 const WALLET_DISCONNECTED_NETWORKS_KEY = 'wallet_disconnected_networks'; // 记录每个网络的断开状态
 const CONNECTED_NETWORK_TYPE_KEY = 'connected_network_type';
 const WALLET_ADDRESSES_KEY = 'wallet_addresses_cache'; // 多网络钱包地址缓存
+const CONNECTED_WALLET_IDS_KEY = 'connected_wallet_ids'; // 每个网络连接的钱包 ID
 
 /**
  * Check if a wallet is installed for a specific network type
@@ -237,4 +238,52 @@ export function clearAllWalletAddresses(): void {
   if (typeof window !== 'undefined') {
     localStorage.removeItem(WALLET_ADDRESSES_KEY);
   }
+}
+
+/**
+ * Get all connected wallet IDs
+ */
+export function getAllConnectedWalletIds(): Partial<Record<NetworkType, string>> {
+  if (typeof window === 'undefined') {
+    return {};
+  }
+  try {
+    const cached = localStorage.getItem(CONNECTED_WALLET_IDS_KEY);
+    return cached ? JSON.parse(cached) : {};
+  } catch (error) {
+    console.error('Failed to parse connected wallet IDs:', error);
+    return {};
+  }
+}
+
+/**
+ * Save connected wallet ID for a specific network
+ */
+export function saveConnectedWalletId(networkType: NetworkType, walletId: string): void {
+  if (typeof window === 'undefined') {
+    return;
+  }
+  const walletIds = getAllConnectedWalletIds();
+  walletIds[networkType] = walletId;
+  localStorage.setItem(CONNECTED_WALLET_IDS_KEY, JSON.stringify(walletIds));
+}
+
+/**
+ * Get connected wallet ID for a specific network
+ */
+export function getConnectedWalletId(networkType: NetworkType): string | null {
+  const walletIds = getAllConnectedWalletIds();
+  return walletIds[networkType] || null;
+}
+
+/**
+ * Remove connected wallet ID for a specific network
+ */
+export function removeConnectedWalletId(networkType: NetworkType): void {
+  if (typeof window === 'undefined') {
+    return;
+  }
+  const walletIds = getAllConnectedWalletIds();
+  delete walletIds[networkType];
+  localStorage.setItem(CONNECTED_WALLET_IDS_KEY, JSON.stringify(walletIds));
 }

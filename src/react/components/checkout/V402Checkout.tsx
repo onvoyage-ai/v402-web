@@ -148,7 +148,8 @@ export default function V402Checkout({
         setIsProcessing(true);
 
         try {
-            const response = await makePayment(networkType, checkoutId, endpoint, additionalParams);
+            // Pass address for validation to ensure correct wallet is used
+            const response = await makePayment(networkType, checkoutId, endpoint, additionalParams, address || undefined);
             const data = await response.json();
             setResult(data);
             notify.success('Payment Successful!', 'Your payment has been processed successfully.');

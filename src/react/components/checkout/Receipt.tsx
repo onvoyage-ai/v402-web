@@ -19,7 +19,8 @@ export const Receipt: React.FC<ReceiptProps> = ({
                                                     address,
                                                     onClose,
                                                     primaryColor,
-                                                    checkoutId,
+                                                    receiptTitle,
+                                                    tempReceiptId,
                                                 }) => {
     const [animationState, setAnimationState] = useState<AnimationState>('hidden');
 
@@ -49,7 +50,11 @@ export const Receipt: React.FC<ReceiptProps> = ({
     const now = new Date();
     const dateStr = `${String(now.getMonth() + 1).padStart(2, '0')}/${String(now.getDate()).padStart(2, '0')}/${String(now.getFullYear()).slice(-2)}`;
     const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-    const receiptId = result?.transactionHash?.slice(-8)?.toUpperCase() || checkoutId?.slice(-8)?.toUpperCase() || 'N/A';
+    
+    // ID 逻辑：Loading 时用临时 ID，成功后用 txHash 后8位
+    const receiptId = result?.transactionHash 
+        ? result.transactionHash.slice(-8).toUpperCase() 
+        : tempReceiptId;
 
     // 根据状态获取动画样式
     const getAnimationStyles = (): React.CSSProperties => {
@@ -81,7 +86,7 @@ export const Receipt: React.FC<ReceiptProps> = ({
                 return {
                     opacity: 1,
                     transform: 'translateY(0)',
-                    maxHeight: '500px',
+                    maxHeight: '600px',
                     marginBottom: '8px',
                     overflow: 'visible',
                     transition: baseTransition,
@@ -90,7 +95,7 @@ export const Receipt: React.FC<ReceiptProps> = ({
                 return {
                     opacity: 1,
                     transform: 'translateY(-8px)',
-                    maxHeight: '500px',
+                    maxHeight: '600px',
                     marginBottom: '8px',
                     overflow: 'visible',
                     transition: baseTransition,
@@ -151,7 +156,7 @@ export const Receipt: React.FC<ReceiptProps> = ({
                     {/* 标题 */}
                     <div className="text-center mb-3">
                         <div className="text-base font-bold tracking-wider text-gray-800">
-                            V402 PAYMENT
+                            {receiptTitle}
                         </div>
                         <div className="flex justify-between text-xs text-gray-500 mt-1">
                             <span>ID: {receiptId}</span>
@@ -164,7 +169,7 @@ export const Receipt: React.FC<ReceiptProps> = ({
 
                     {/* 内容区域 */}
                     <div
-                        className="max-h-40 overflow-y-auto pr-1"
+                        className="max-h-64 overflow-y-auto pr-1"
                         style={{
                             scrollbarWidth: 'thin',
                             scrollbarColor: '#d1d5db transparent',
@@ -202,23 +207,23 @@ export const Receipt: React.FC<ReceiptProps> = ({
 // ============ 子组件 ============
 
 const LoadingContent: React.FC<{ primaryColor: string }> = ({primaryColor}) => (
-    <div className="text-center py-6">
+    <div className="text-center py-4">
         <div
-            className="inline-block w-8 h-8 border-2 border-gray-200 rounded-full mb-3"
+            className="inline-block w-8 h-8 border-2 border-gray-200 rounded-full mb-2"
             style={{
                 borderTopColor: primaryColor,
                 animation: 'spin 0.8s linear infinite',
             }}
         />
-        <div className="text-gray-700 font-semibold text-sm">Processing Payment...</div>
+        <div className="text-gray-700 font-semibold text-sm">Processing...</div>
         <div className="text-gray-400 text-xs mt-1">Please wait</div>
     </div>
 );
 
 const ErrorContent: React.FC<{ error: string }> = ({error}) => (
-    <div className="text-center py-4">
+    <div className="text-center py-3">
         <div className="text-red-500 text-2xl mb-2">✗</div>
-        <div className="text-red-600 font-semibold mb-2">PAYMENT FAILED</div>
+        <div className="text-red-600 font-semibold mb-1 text-sm">FAILED</div>
         <div className="text-red-500 text-xs break-words px-2">{error}</div>
     </div>
 );
@@ -235,71 +240,103 @@ const SuccessContent: React.FC<SuccessContentProps> = ({
                                                            paymentDetails,
                                                            address,
                                                            primaryColor,
-                                                       }) => (
-    <div>
-        <div className="text-center mb-3">
-            <div className="text-2xl mb-1" style={{color: primaryColor}}>✓</div>
-            <div className="font-semibold" style={{color: primaryColor}}>
-                PAYMENT SUCCESS
+                                                       }) => {
+    const [copied, setCopied] = useState(false);
+
+    const handleCopy = async () => {
+        try {
+            await navigator.clipboard.writeText(JSON.stringify(result, null, 2));
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+        } catch (err) {
+            console.error('Failed to copy:', err);
+        }
+    };
+
+    return (
+        <div>
+            <div className="text-center mb-2">
+                <div className="text-2xl mb-1" style={{color: primaryColor}}>✓</div>
+                <div className="font-semibold text-sm" style={{color: primaryColor}}>
+                    SUCCESS
+                </div>
+            </div>
+
+            {/* 支付详情 */}
+            <div className="space-y-1 text-xs">
+                {paymentDetails && (
+                    <>
+                        <div className="flex justify-between">
+                            <span className="text-gray-500">Amount:</span>
+                            <span className="font-semibold">${paymentDetails.amount} {paymentDetails.currency}</span>
+                        </div>
+                        <div className="flex justify-between">
+                            <span className="text-gray-500">Network:</span>
+                            <span className="font-semibold">{paymentDetails.network}</span>
+                        </div>
+                    </>
+                )}
+                {address && (
+                    <div className="flex justify-between">
+                        <span className="text-gray-500">From:</span>
+                        <span className="font-semibold">{formatAddress(address)}</span>
+                    </div>
+                )}
+                {result.transactionHash && (
+                    <div className="flex justify-between">
+                        <span className="text-gray-500">TX:</span>
+                        <span className="font-semibold">{formatAddress(result.transactionHash)}</span>
+                    </div>
+                )}
+            </div>
+
+            {/* 虚线分隔 */}
+            <div className="border-t border-dashed border-gray-300 my-2"/>
+
+            {/* Response Data */}
+            <div className="text-xs">
+                <div className="flex justify-between items-center mb-1">
+                    <span className="text-gray-500">Response:</span>
+                    <button
+                        onClick={handleCopy}
+                        className="text-xs px-2 py-0.5 rounded transition-colors"
+                        style={{
+                            backgroundColor: copied ? '#22c55e' : '#f3f4f6',
+                            color: copied ? 'white' : '#6b7280',
+                        }}
+                    >
+                        {copied ? '✓ Copied' : 'Copy'}
+                    </button>
+                </div>
+                <pre
+                    className="bg-gray-50 p-2 rounded text-xs overflow-auto whitespace-pre-wrap break-words"
+                    style={{maxHeight: '80px', fontSize: '10px'}}
+                >
+                    {JSON.stringify(result, null, 2)}
+                </pre>
             </div>
         </div>
+    );
+};
 
-        {/* 支付详情 */}
-        <div className="space-y-1.5 text-xs">
-            {paymentDetails && (
-                <>
-                    <div className="flex justify-between">
-                        <span className="text-gray-500">Amount:</span>
-                        <span className="font-semibold">${paymentDetails.amount} {paymentDetails.currency}</span>
-                    </div>
-                    <div className="flex justify-between">
-                        <span className="text-gray-500">Network:</span>
-                        <span className="font-semibold">{paymentDetails.network}</span>
-                    </div>
-                </>
-            )}
-            {address && (
-                <div className="flex justify-between">
-                    <span className="text-gray-500">From:</span>
-                    <span className="font-semibold">{formatAddress(address)}</span>
-                </div>
-            )}
-            {result.transactionHash && (
-                <div className="flex justify-between">
-                    <span className="text-gray-500">TX Hash:</span>
-                    <span className="font-semibold">{formatAddress(result.transactionHash)}</span>
-                </div>
-            )}
+// 条形码组件 - 使用固定模式避免 hydration 问题
+const Barcode: React.FC = () => {
+    // 使用固定的模式，避免 SSR/CSR 不匹配
+    const pattern = [2, 1, 2, 1, 1, 2, 1, 2, 1, 1, 2, 1, 2, 1, 1, 2, 1, 2, 1, 1];
+    const heights = [10, 12, 11, 13, 10, 14, 11, 12, 13, 10, 11, 14, 12, 10, 13, 11, 12, 14, 10, 11];
+    
+    return (
+        <div className="flex items-center justify-center gap-0.5 h-4 opacity-60">
+            {pattern.map((width, i) => (
+                <div
+                    key={i}
+                    className="bg-gray-800"
+                    style={{
+                        width: `${width}px`,
+                        height: `${heights[i]}px`,
+                    }}
+                />
+            ))}
         </div>
-
-        {/* 虚线分隔 */}
-        <div className="border-t border-dashed border-gray-300 my-2"/>
-
-        {/* Response Data */}
-        <div className="text-xs">
-            <div className="text-gray-500 mb-1">Response Data:</div>
-            <pre
-                className="bg-gray-50 p-2 rounded text-xs overflow-auto whitespace-pre-wrap break-words"
-                style={{maxHeight: '60px'}}
-            >
-                {JSON.stringify(result, null, 2)}
-            </pre>
-        </div>
-    </div>
-);
-
-const Barcode: React.FC = () => (
-    <div className="flex items-center justify-center gap-0.5 h-5 opacity-60">
-        {Array.from({length: 25}).map((_, i) => (
-            <div
-                key={i}
-                className="bg-gray-800"
-                style={{
-                    width: Math.random() > 0.5 ? '2px' : '1px',
-                    height: `${10 + Math.random() * 6}px`,
-                }}
-            />
-        ))}
-    </div>
-);
-
+    );
+};
