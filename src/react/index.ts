@@ -43,5 +43,8 @@ export type { UsePaymentInfoReturn } from './hooks/usePaymentInfo';
 export { WalletConnect } from './components/WalletConnect';
 export type { WalletConnectProps } from './components/WalletConnect';
 
+export { WalletSelectModal } from './components/WalletSelectModal';
+export type { WalletSelectModalProps } from './components/WalletSelectModal';
+
 export { default as V402Checkout } from './components/V402Checkout';
 export type { V402CheckoutProps } from './components/V402Checkout';

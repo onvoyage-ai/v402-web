@@ -8,6 +8,7 @@
 import {NetworkType} from '../../types';
 import {
   connectWallet as connectWalletUtil,
+  disconnectWallet as disconnectWalletUtil,
   isWalletManuallyDisconnected,
   markWalletDisconnected,
   onAccountsChanged,
@@ -16,6 +17,13 @@ import {
   removeWalletAddress,
   saveWalletAddress,
   switchNetwork as switchNetworkUtil,
+  connectToWallet,
+  WalletInfo,
+  clearWalletDisconnection,
+  saveConnectedNetworkType,
+  clearConnectedWallet,
+  setCurrentConnectedWallet,
+  getWalletsForNetwork,
 } from '../../utils';
 
 type Listener = () => void;
@@ -121,7 +129,8 @@ class WalletStore {
   }
 
   // Connect wallet
-  async connect(type: NetworkType): Promise<void> {
+  // @param forceSelect - 强制弹出钱包选择界面，用于切换账户
+  async connect(type: NetworkType, forceSelect: boolean = false): Promise<void> {
     // 保存当前网络的地址到缓存（如果正在切换网络）
     if (this.state.address && this.state.networkType && this.state.networkType !== type) {
       saveWalletAddress(this.state.networkType, this.state.address);
@@ -130,11 +139,50 @@ class WalletStore {
     this.setState({isConnecting: true, error: null});
 
     try {
-      const walletAddress = await connectWalletUtil(type);
+      const walletAddress = await connectWalletUtil(type, forceSelect);
+
+      // Try to set the default wallet provider for this network type
+      // This ensures payment functions use the correct provider
+      const wallets = getWalletsForNetwork(type);
+      if (wallets.length > 0) {
+        // Use the first available wallet as default
+        setCurrentConnectedWallet(wallets[0]);
+      }
 
       this.setState({
         address: walletAddress,
         networkType: type,
+        isConnecting: false,
+      });
+    } catch (err: any) {
+      this.setState({
+        error: err.message || 'Failed to connect wallet',
+        isConnecting: false,
+      });
+      throw err;
+    }
+  }
+
+  // Connect to a specific wallet (from wallet discovery)
+  async connectWithWallet(wallet: WalletInfo): Promise<void> {
+    // 保存当前网络的地址到缓存（如果正在切换网络）
+    if (this.state.address && this.state.networkType && this.state.networkType !== wallet.networkType) {
+      saveWalletAddress(this.state.networkType, this.state.address);
+    }
+
+    this.setState({isConnecting: true, error: null});
+
+    try {
+      const walletAddress = await connectToWallet(wallet);
+
+      // Save connection state
+      clearWalletDisconnection(wallet.networkType);
+      saveConnectedNetworkType(wallet.networkType);
+      saveWalletAddress(wallet.networkType, walletAddress);
+
+      this.setState({
+        address: walletAddress,
+        networkType: wallet.networkType,
         isConnecting: false,
       });
     } catch (err: any) {
@@ -185,10 +233,19 @@ class WalletStore {
   }
 
   // Disconnect wallet
-  disconnect(): void {
+  async disconnect(): Promise<void> {
     const currentNetwork = this.state.networkType;
 
+    // Clear the connected wallet provider
+    clearConnectedWallet();
+
     if (currentNetwork) {
+      // 先调用真正的钱包断开方法
+      try {
+        await disconnectWalletUtil(currentNetwork);
+      } catch (err) {
+        console.warn('Failed to disconnect wallet provider:', err);
+      }
       // 清除当前网络的缓存并标记为手动断开
       this.handleDisconnect(currentNetwork);
     } else {

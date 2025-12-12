@@ -8,8 +8,9 @@
 
 import React, {useState} from 'react';
 import {NetworkType} from '../../types';
-import {formatAddress, getNetworkDisplayName, getWalletInstallUrl, isWalletInstalled,} from '../../utils';
+import {formatAddress, getNetworkDisplayName, WalletInfo} from '../../utils';
 import {useWallet} from '../hooks/useWalletStore';
+import {WalletSelectModal} from './WalletSelectModal';
 import {
     buttonsContainerStyle,
     containerStyle,
@@ -18,7 +19,6 @@ import {
     getDisconnectButtonStyle,
     getErrorStyle,
     getHintStyle,
-    getInstallLinkStyle,
     getLabelStyle,
     getSectionStyle,
     getTitleStyle,
@@ -32,6 +32,8 @@ export interface WalletConnectProps {
   className?: string;
   onConnect?: (address: string, networkType: NetworkType) => void;
   onDisconnect?: () => void;
+  /** 是否显示切换钱包按钮，默认为 true */
+  showSwitchWallet?: boolean;
 }
 
 /**
@@ -56,97 +58,119 @@ export function WalletConnect({
                                 className = '',
                                 onConnect,
                                 onDisconnect,
+                                showSwitchWallet = true,
                               }: WalletConnectProps) {
-  const {address, networkType, isConnecting, error, connect, disconnect} = useWallet();
+  const {address, networkType, isConnecting, error, connectWithWallet, disconnect} = useWallet();
   const [hoveredButton, setHoveredButton] = useState<string | null>(null);
-  const [hoveredLink, setHoveredLink] = useState<string | null>(null);
+  const [walletSelectOpen, setWalletSelectOpen] = useState(false);
+  const [selectedNetworkType, setSelectedNetworkType] = useState<NetworkType | null>(null);
 
-  const handleConnect = async (network: NetworkType) => {
+  const handleOpenWalletSelect = (network: NetworkType) => {
+    setSelectedNetworkType(network);
+    setWalletSelectOpen(true);
+  };
+
+  const handleWalletSelect = async (wallet: WalletInfo) => {
+    setWalletSelectOpen(false);
     try {
-      await connect(network);
-      // Note: address state won't be updated yet due to async setState
-      // The parent component will re-render when address updates
+      await connectWithWallet(wallet);
     } catch (err) {
       // Error is already set in hook
     }
   };
 
-  const handleDisconnect = () => {
-    disconnect();
+  const handleDisconnect = async () => {
+    await disconnect();
     onDisconnect?.();
   };
 
-  return (
-      <div style={{ ...containerStyle, ...(className ? {} : {}) }} className={className}>
-        {!address ? (
-            <div style={getSectionStyle()}>
-              <h3 style={getTitleStyle()}>Connect Wallet</h3>
+  const handleSwitchWallet = () => {
+    if (networkType) {
+      // 打开钱包选择弹窗
+      setSelectedNetworkType(networkType);
+      setWalletSelectOpen(true);
+    }
+  };
 
-              {supportedNetworks.length === 0 ? (
-                  <p style={getHintStyle()}>Please install a supported wallet extension</p>
-              ) : (
-                  <div style={buttonsContainerStyle}>
-                    {supportedNetworks.map((network) => {
-                      const installed = isWalletInstalled(network);
-                      return (
+  return (
+      <>
+        <div style={{ ...containerStyle, ...(className ? {} : {}) }} className={className}>
+          {!address ? (
+              <div style={getSectionStyle()}>
+                <h3 style={getTitleStyle()}>Connect Wallet</h3>
+
+                {supportedNetworks.length === 0 ? (
+                    <p style={getHintStyle()}>Please install a supported wallet extension</p>
+                ) : (
+                    <div style={buttonsContainerStyle}>
+                      {supportedNetworks.map((network) => (
                           <div key={network} style={walletOptionStyle}>
                             <button
-                                style={getConnectButtonStyle(isConnecting || !installed, hoveredButton === network)}
-                                onClick={() => handleConnect(network)}
-                                disabled={isConnecting || !installed}
+                                style={getConnectButtonStyle(isConnecting, hoveredButton === network)}
+                                onClick={() => handleOpenWalletSelect(network)}
+                                disabled={isConnecting}
                                 onMouseEnter={() => setHoveredButton(network)}
                                 onMouseLeave={() => setHoveredButton(null)}
                             >
                               {isConnecting ? 'Connecting...' : getNetworkDisplayName(network)}
                             </button>
-                            {!installed && (
-                                <a
-                                    href={getWalletInstallUrl(network)}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    style={getInstallLinkStyle(hoveredLink === network)}
-                                    onMouseEnter={() => setHoveredLink(network)}
-                                    onMouseLeave={() => setHoveredLink(null)}
-                                >
-                                  Install Wallet
-                                </a>
-                            )}
                           </div>
-                      );
-                    })}
-                  </div>
-              )}
+                      ))}
+                    </div>
+                )}
 
-              {error && <p style={getErrorStyle()}>{error}</p>}
+                {error && <p style={getErrorStyle()}>{error}</p>}
 
-              <p style={getHintStyle()}>
-                To switch accounts, please change it in your wallet extension
-              </p>
-            </div>
-        ) : (
-            <div style={getSectionStyle()}>
-              <div style={walletAddressStyle}>
-            <span style={getLabelStyle()}>
-              Connected {networkType && `(${getNetworkDisplayName(networkType)})`}
-            </span>
-                <span style={getAddressStyle()}>{formatAddress(address)}</span>
+                <p style={getHintStyle()}>
+                  Select a network to see available wallets
+                </p>
               </div>
-              <div style={walletActionsStyle}>
-                <button
-                    style={getDisconnectButtonStyle(hoveredButton === 'disconnect')}
-                    onClick={handleDisconnect}
-                    onMouseEnter={() => setHoveredButton('disconnect')}
-                    onMouseLeave={() => setHoveredButton(null)}
-                >
-                  Disconnect
-                </button>
+          ) : (
+              <div style={getSectionStyle()}>
+                <div style={walletAddressStyle}>
+              <span style={getLabelStyle()}>
+                Connected {networkType && `(${getNetworkDisplayName(networkType)})`}
+              </span>
+                  <span style={getAddressStyle()}>{formatAddress(address)}</span>
+                </div>
+                <div style={walletActionsStyle}>
+                  {showSwitchWallet && (
+                      <button
+                          style={getConnectButtonStyle(isConnecting, hoveredButton === 'switch')}
+                          onClick={handleSwitchWallet}
+                          disabled={isConnecting}
+                          onMouseEnter={() => setHoveredButton('switch')}
+                          onMouseLeave={() => setHoveredButton(null)}
+                      >
+                        {isConnecting ? 'Switching...' : 'Switch Wallet'}
+                      </button>
+                  )}
+                  <button
+                      style={getDisconnectButtonStyle(hoveredButton === 'disconnect')}
+                      onClick={handleDisconnect}
+                      onMouseEnter={() => setHoveredButton('disconnect')}
+                      onMouseLeave={() => setHoveredButton(null)}
+                  >
+                    Disconnect
+                  </button>
+                </div>
+                <p style={getHintStyle()}>
+                  Click "Switch Wallet" to change wallet or account
+                </p>
               </div>
-              <p style={getHintStyle()}>
-                Switch account in your wallet to change address
-              </p>
-            </div>
+          )}
+        </div>
+
+        {/* Wallet Selection Modal */}
+        {selectedNetworkType && (
+            <WalletSelectModal
+                isOpen={walletSelectOpen}
+                networkType={selectedNetworkType}
+                onSelect={handleWalletSelect}
+                onClose={() => setWalletSelectOpen(false)}
+            />
         )}
-      </div>
+      </>
   );
 }
 

@@ -35,6 +35,25 @@ export {
   onWalletDisconnect,
 } from "./wallet-connect";
 
+// Wallet discovery (multi-wallet support)
+export {
+  initEVMWalletDiscovery,
+  getEVMWallets,
+  getSolanaWallets,
+  getWalletsForNetwork,
+  getWalletById,
+  connectToWallet,
+  onEVMWalletsChanged,
+  // Provider management for payments
+  getCurrentConnectedWallet,
+  setCurrentConnectedWallet,
+  clearConnectedWallet,
+  getWalletProviderForPayment,
+  type WalletInfo,
+  type EIP6963ProviderInfo,
+  type EIP6963ProviderDetail,
+} from "./wallet-discovery";
+
 // Payment helpers (for demo/UI)
 export {
     makePayment,

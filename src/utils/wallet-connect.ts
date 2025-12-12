@@ -16,8 +16,9 @@ import {
 
 /**
  * Connect wallet and return address
+ * @param forceSelect - 是否强制弹出钱包选择界面（用于切换账户）
  */
-export async function connectWallet(networkType: NetworkType): Promise<string> {
+export async function connectWallet(networkType: NetworkType, forceSelect: boolean = false): Promise<string> {
   if (typeof window === 'undefined') {
     throw new Error('请在浏览器环境中使用');
   }
@@ -30,6 +31,32 @@ export async function connectWallet(networkType: NetworkType): Promise<string> {
         throw new Error('请安装 MetaMask 或其他以太坊钱包');
       }
       const ethereum = (window as any).ethereum;
+      
+      if (forceSelect) {
+        // 强制弹出账户选择界面
+        try {
+          const permissions = await ethereum.request({
+            method: 'wallet_requestPermissions',
+            params: [{ eth_accounts: {} }],
+          });
+          // 从权限结果中获取账户
+          const accountsPermission = permissions?.find(
+            (p: any) => p.parentCapability === 'eth_accounts'
+          );
+          if (accountsPermission?.caveats?.[0]?.value?.length > 0) {
+            address = accountsPermission.caveats[0].value[0];
+            break;
+          }
+        } catch (err: any) {
+          // 用户取消了权限请求
+          if (err.code === 4001) {
+            throw new Error('用户取消了钱包连接');
+          }
+          // 如果钱包不支持 wallet_requestPermissions，继续使用普通方式
+          console.warn('wallet_requestPermissions failed, falling back to eth_requestAccounts');
+        }
+      }
+      
       const accounts = await ethereum.request({
         method: 'eth_requestAccounts',
         params: [],
@@ -43,10 +70,48 @@ export async function connectWallet(networkType: NetworkType): Promise<string> {
 
     case NetworkType.SOLANA:
     case NetworkType.SVM: {
-      const solana = (window as any).solana;
+      // 检测可用的 Solana 钱包
+      const phantom = (window as any).phantom?.solana || (window as any).solana;
+      const solflare = (window as any).solflare;
+      
+      // 优先使用 Phantom
+      let solana = phantom;
+      
+      // 如果 forceSelect 且有多个钱包，可以考虑切换
+      // 目前简单处理：如果 Phantom 不可用，尝试 Solflare
+      if (!solana && solflare?.isSolflare) {
+        solana = solflare;
+      }
+      
       if (!solana) {
         throw new Error('请安装 Phantom 或其他 Solana 钱包');
       }
+      
+      // 如果需要强制选择，先彻底断开连接
+      if (forceSelect) {
+        try {
+          // 断开所有可能的钱包连接
+          if (phantom?.isConnected) {
+            await phantom.disconnect();
+          }
+          if (solflare?.isConnected) {
+            await solflare.disconnect();
+          }
+          // 等待一小段时间让钱包完成断开
+          await new Promise(resolve => setTimeout(resolve, 100));
+        } catch (err) {
+          console.warn('Failed to disconnect Solana wallet:', err);
+        }
+      } else if (solana.isConnected) {
+        // 非强制模式下，如果已连接则先断开
+        try {
+          await solana.disconnect();
+        } catch (err) {
+          console.warn('Failed to disconnect Solana wallet:', err);
+        }
+      }
+      
+      // 连接钱包 - Phantom 会弹出确认框
       const response = await solana.connect();
       address = response.publicKey.toString();
       break;
@@ -66,25 +131,79 @@ export async function connectWallet(networkType: NetworkType): Promise<string> {
 }
 
 /**
+ * 断开所有 Solana 钱包连接
+ */
+async function disconnectAllSolanaWallets(): Promise<void> {
+  if (typeof window === 'undefined') return;
+  
+  const phantom = (window as any).phantom?.solana || (window as any).solana;
+  const solflare = (window as any).solflare;
+  
+  const disconnectPromises: Promise<void>[] = [];
+  
+  if (phantom?.isConnected) {
+    disconnectPromises.push(
+      phantom.disconnect().catch((err: any) => 
+        console.warn('Failed to disconnect Phantom:', err)
+      )
+    );
+  }
+  
+  if (solflare?.isConnected) {
+    disconnectPromises.push(
+      solflare.disconnect().catch((err: any) => 
+        console.warn('Failed to disconnect Solflare:', err)
+      )
+    );
+  }
+  
+  await Promise.all(disconnectPromises);
+}
+
+/**
  * Disconnect wallet
  * @param networkType - 可选，指定要断开的网络类型。如果不指定，则断开当前网络
  * @param clearAll - 是否清除所有网络的缓存，默认为 false
  */
-export function disconnectWallet(networkType?: NetworkType, clearAll: boolean = false): void {
+export async function disconnectWallet(networkType?: NetworkType, clearAll: boolean = false): Promise<void> {
+  const targetNetwork = networkType || getStoredNetworkType();
+  
+  // 真正断开钱包连接
+  if (targetNetwork && typeof window !== 'undefined') {
+    try {
+      switch (targetNetwork) {
+        case NetworkType.SOLANA:
+        case NetworkType.SVM: {
+          await disconnectAllSolanaWallets();
+          break;
+        }
+        // EVM 钱包（如 MetaMask）没有真正的 disconnect API
+        // 只清除本地状态，下次连接时会重新请求权限
+        case NetworkType.EVM:
+        default:
+          break;
+      }
+    } catch (err) {
+      console.warn('Failed to disconnect wallet:', err);
+    }
+  }
+  
   if (clearAll) {
     // 清除所有网络的钱包缓存
     const { clearAllWalletAddresses } = require('./wallet');
     clearAllWalletAddresses();
     markWalletDisconnected();
+    
+    // 断开所有类型钱包
+    await disconnectAllSolanaWallets();
   } else if (networkType) {
     // 只清除指定网络的缓存
     removeWalletAddress(networkType);
     // 不调用 markWalletDisconnected()，避免影响其他网络
   } else {
     // 清除当前连接的网络缓存
-    const currentNetwork = getStoredNetworkType();
-    if (currentNetwork) {
-      removeWalletAddress(currentNetwork);
+    if (targetNetwork) {
+      removeWalletAddress(targetNetwork);
     }
     // 不调用 markWalletDisconnected()，避免影响其他网络
   }

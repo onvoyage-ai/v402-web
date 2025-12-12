@@ -8,6 +8,7 @@
 import {useSyncExternalStore} from 'react';
 import {walletStore} from '../store/walletStore';
 import {NetworkType} from '../../types';
+import {WalletInfo} from '../../utils';
 
 export interface UseWalletReturn {
     // State
@@ -17,10 +18,11 @@ export interface UseWalletReturn {
     error: string | null;
 
     // Actions
-    connect: (networkType: NetworkType) => Promise<void>;
+    connect: (networkType: NetworkType, forceSelect?: boolean) => Promise<void>;
+    connectWithWallet: (wallet: WalletInfo) => Promise<void>;
     switchNetwork: (networkType: NetworkType) => Promise<void>;
     ensureNetwork: (networkType: NetworkType) => Promise<void>;
-    disconnect: () => void;
+    disconnect: () => Promise<void>;
     clearError: () => void;
 }
 
@@ -55,7 +57,8 @@ export function useWallet(): UseWalletReturn {
 
     return {
         ...state,
-        connect: (type: NetworkType) => walletStore.connect(type),
+        connect: (type: NetworkType, forceSelect?: boolean) => walletStore.connect(type, forceSelect),
+        connectWithWallet: (wallet: WalletInfo) => walletStore.connectWithWallet(wallet),
         switchNetwork: (type: NetworkType) => walletStore.switchNetwork(type),
         ensureNetwork: (type: NetworkType) => walletStore.ensureNetwork(type),
         disconnect: () => walletStore.disconnect(),

@@ -8,6 +8,7 @@ import type {PaymentRequirements} from "x402/types";
 import {handleEvmPayment, handleSvmPayment} from "../services";
 import {ethers} from "ethers";
 import {PROD_BACK_URL} from "../types/common";
+import {getWalletProviderForPayment} from "./wallet-discovery";
 
 export interface PaymentCallbacks {
     onStart?: () => void;
@@ -109,10 +110,10 @@ export async function makePayment(
         : {};
 
     if (networkType === NetworkType.SOLANA || networkType === NetworkType.SVM) {
-        // Solana payment
-        const solana = (window as any).solana;
+        // Solana payment - use the selected wallet provider
+        const solana = getWalletProviderForPayment(networkType);
         if (!solana) {
-            throw new Error('请安装 Phantom 钱包');
+            throw new Error('请先连接 Solana 钱包');
         }
 
         if (!solana.isConnected) {
@@ -124,12 +125,13 @@ export async function makePayment(
             network: 'solana', // Will use backend's network configuration
         }, requestInit);
     } else if (networkType === NetworkType.EVM) {
-        // EVM payment
-        if (!(window as any).ethereum) {
-            throw new Error('请安装 MetaMask 钱包');
+        // EVM payment - use the selected wallet provider
+        const ethereum = getWalletProviderForPayment(networkType);
+        if (!ethereum) {
+            throw new Error('请先连接 EVM 钱包');
         }
 
-        const provider = new ethers.BrowserProvider((window as any).ethereum);
+        const provider = new ethers.BrowserProvider(ethereum);
         const signer = await provider.getSigner();
 
         const wallet = {
@@ -144,7 +146,7 @@ export async function makePayment(
             },
             // Switch to a different chain
             switchChain: async (chainId: string) => {
-                await (window as any).ethereum.request({
+                await ethereum.request({
                     method: 'wallet_switchEthereumChain',
                     params: [{ chainId }],
                 });
