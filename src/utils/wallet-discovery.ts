@@ -259,7 +259,7 @@ export function getWalletByName(name: string, networkType: NetworkType): WalletI
  */
 export async function connectEVMWallet(wallet: WalletInfo): Promise<string> {
   if (!wallet.provider) {
-    throw new Error(`钱包 ${wallet.name} 不可用`);
+    throw new Error(`Wallet ${wallet.name} is not available`);
   }
 
   const accounts = await wallet.provider.request({
@@ -268,7 +268,7 @@ export async function connectEVMWallet(wallet: WalletInfo): Promise<string> {
   });
 
   if (!accounts || accounts.length === 0) {
-    throw new Error('未能获取到钱包地址');
+    throw new Error('Failed to get wallet address');
   }
 
   return accounts[0];
@@ -279,7 +279,7 @@ export async function connectEVMWallet(wallet: WalletInfo): Promise<string> {
  */
 export async function connectSolanaWallet(wallet: WalletInfo): Promise<string> {
   if (!wallet.provider) {
-    throw new Error(`钱包 ${wallet.name} 不可用`);
+    throw new Error(`Wallet ${wallet.name} is not available`);
   }
 
   // Disconnect first if connected
@@ -310,7 +310,7 @@ export async function connectToWallet(wallet: WalletInfo): Promise<string> {
       address = await connectSolanaWallet(wallet);
       break;
     default:
-      throw new Error('不支持的网络类型');
+      throw new Error('Unsupported network type');
   }
   
   // Save the connected wallet for payment signing

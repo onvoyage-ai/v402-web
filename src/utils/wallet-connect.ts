@@ -16,11 +16,11 @@ import {
 
 /**
  * Connect wallet and return address
- * @param forceSelect - 是否强制弹出钱包选择界面（用于切换账户）
+ * @param forceSelect - Force wallet selection UI to appear (for switching accounts)
  */
 export async function connectWallet(networkType: NetworkType, forceSelect: boolean = false): Promise<string> {
   if (typeof window === 'undefined') {
-    throw new Error('请在浏览器环境中使用');
+    throw new Error('Please use in browser environment');
   }
 
   let address: string;
@@ -28,18 +28,18 @@ export async function connectWallet(networkType: NetworkType, forceSelect: boole
   switch (networkType) {
     case NetworkType.EVM: {
       if (!(window as any).ethereum) {
-        throw new Error('请安装 MetaMask 或其他以太坊钱包');
+        throw new Error('Please install MetaMask or another Ethereum wallet');
       }
       const ethereum = (window as any).ethereum;
       
       if (forceSelect) {
-        // 强制弹出账户选择界面
+        // Force account selection UI
         try {
           const permissions = await ethereum.request({
             method: 'wallet_requestPermissions',
             params: [{ eth_accounts: {} }],
           });
-          // 从权限结果中获取账户
+          // Get account from permissions result
           const accountsPermission = permissions?.find(
             (p: any) => p.parentCapability === 'eth_accounts'
           );
@@ -48,11 +48,11 @@ export async function connectWallet(networkType: NetworkType, forceSelect: boole
             break;
           }
         } catch (err: any) {
-          // 用户取消了权限请求
+          // User cancelled permission request
           if (err.code === 4001) {
-            throw new Error('用户取消了钱包连接');
+            throw new Error('User cancelled wallet connection');
           }
-          // 如果钱包不支持 wallet_requestPermissions，继续使用普通方式
+          // If wallet doesn't support wallet_requestPermissions, continue with normal method
           console.warn('wallet_requestPermissions failed, falling back to eth_requestAccounts');
         }
       }
@@ -62,7 +62,7 @@ export async function connectWallet(networkType: NetworkType, forceSelect: boole
         params: [],
       });
       if (!accounts || accounts.length === 0) {
-        throw new Error('未能获取到钱包地址');
+        throw new Error('Failed to get wallet address');
       }
       address = accounts[0];
       break;
@@ -70,40 +70,40 @@ export async function connectWallet(networkType: NetworkType, forceSelect: boole
 
     case NetworkType.SOLANA:
     case NetworkType.SVM: {
-      // 检测可用的 Solana 钱包
+      // Detect available Solana wallets
       const phantom = (window as any).phantom?.solana || (window as any).solana;
       const solflare = (window as any).solflare;
       
-      // 优先使用 Phantom
+      // Prefer Phantom
       let solana = phantom;
       
-      // 如果 forceSelect 且有多个钱包，可以考虑切换
-      // 目前简单处理：如果 Phantom 不可用，尝试 Solflare
+      // If forceSelect and multiple wallets available, consider switching
+      // Currently simple handling: if Phantom unavailable, try Solflare
       if (!solana && solflare?.isSolflare) {
         solana = solflare;
       }
       
       if (!solana) {
-        throw new Error('请安装 Phantom 或其他 Solana 钱包');
+        throw new Error('Please install Phantom or another Solana wallet');
       }
       
-      // 如果需要强制选择，先彻底断开连接
+      // If force select, fully disconnect first
       if (forceSelect) {
         try {
-          // 断开所有可能的钱包连接
+          // Disconnect all possible wallet connections
           if (phantom?.isConnected) {
             await phantom.disconnect();
           }
           if (solflare?.isConnected) {
             await solflare.disconnect();
           }
-          // 等待一小段时间让钱包完成断开
+          // Wait briefly for wallet to complete disconnection
           await new Promise(resolve => setTimeout(resolve, 100));
         } catch (err) {
           console.warn('Failed to disconnect Solana wallet:', err);
         }
       } else if (solana.isConnected) {
-        // 非强制模式下，如果已连接则先断开
+        // In non-force mode, disconnect if already connected
         try {
           await solana.disconnect();
         } catch (err) {
@@ -111,27 +111,27 @@ export async function connectWallet(networkType: NetworkType, forceSelect: boole
         }
       }
       
-      // 连接钱包 - Phantom 会弹出确认框
+      // Connect wallet - Phantom will show confirmation dialog
       const response = await solana.connect();
       address = response.publicKey.toString();
       break;
     }
 
     default:
-      throw new Error('不支持的网络类型');
+      throw new Error('Unsupported network type');
   }
 
   // Save connection state
-  clearWalletDisconnection(networkType); // 清除该网络的断开标记
+  clearWalletDisconnection(networkType); // Clear disconnection flag for this network
   saveConnectedNetworkType(networkType);
-  // 缓存钱包地址，支持多网络切换
+  // Cache wallet address for multi-network switching
   saveWalletAddress(networkType, address);
 
   return address;
 }
 
 /**
- * 断开所有 Solana 钱包连接
+ * Disconnect all Solana wallets
  */
 async function disconnectAllSolanaWallets(): Promise<void> {
   if (typeof window === 'undefined') return;
@@ -162,13 +162,13 @@ async function disconnectAllSolanaWallets(): Promise<void> {
 
 /**
  * Disconnect wallet
- * @param networkType - 可选，指定要断开的网络类型。如果不指定，则断开当前网络
- * @param clearAll - 是否清除所有网络的缓存，默认为 false
+ * @param networkType - Optional, specify network type to disconnect. If not specified, disconnects current network
+ * @param clearAll - Whether to clear all network caches, default false
  */
 export async function disconnectWallet(networkType?: NetworkType, clearAll: boolean = false): Promise<void> {
   const targetNetwork = networkType || getStoredNetworkType();
   
-  // 真正断开钱包连接
+  // Actually disconnect wallet
   if (targetNetwork && typeof window !== 'undefined') {
     try {
       switch (targetNetwork) {
@@ -177,8 +177,8 @@ export async function disconnectWallet(networkType?: NetworkType, clearAll: bool
           await disconnectAllSolanaWallets();
           break;
         }
-        // EVM 钱包（如 MetaMask）没有真正的 disconnect API
-        // 只清除本地状态，下次连接时会重新请求权限
+        // EVM wallets (like MetaMask) don't have a real disconnect API
+        // Only clear local state, will request permissions again on next connection
         case NetworkType.EVM:
         default:
           break;
@@ -189,30 +189,30 @@ export async function disconnectWallet(networkType?: NetworkType, clearAll: bool
   }
   
   if (clearAll) {
-    // 清除所有网络的钱包缓存
+    // Clear all network wallet caches
     const { clearAllWalletAddresses } = require('./wallet');
     clearAllWalletAddresses();
     markWalletDisconnected();
     
-    // 断开所有类型钱包
+    // Disconnect all wallet types
     await disconnectAllSolanaWallets();
   } else if (networkType) {
-    // 只清除指定网络的缓存
+    // Only clear specified network cache
     removeWalletAddress(networkType);
-    // 不调用 markWalletDisconnected()，避免影响其他网络
+    // Don't call markWalletDisconnected() to avoid affecting other networks
   } else {
-    // 清除当前连接的网络缓存
+    // Clear current connected network cache
     if (targetNetwork) {
       removeWalletAddress(targetNetwork);
     }
-    // 不调用 markWalletDisconnected()，避免影响其他网络
+    // Don't call markWalletDisconnected() to avoid affecting other networks
   }
 }
 
 /**
  * Get current wallet address
- * 优先从缓存读取，缓存是用户明确连接时保存的，应该被信任
- * 注意：此函数不会自动更新缓存，缓存的更新应该只在用户明确连接时发生
+ * Reads from cache first, cache is saved when user explicitly connects, should be trusted
+ * Note: This function does not auto-update cache, cache updates should only happen on explicit connection
  */
 export async function getCurrentWallet(networkType?: NetworkType): Promise<string | null> {
   if (typeof window === 'undefined') {
@@ -224,18 +224,18 @@ export async function getCurrentWallet(networkType?: NetworkType): Promise<strin
     return null;
   }
 
-  // 从缓存读取 - 缓存是用户明确选择的钱包地址
+  // Read from cache - cache contains user's explicitly selected wallet address
   const cachedAddress = getCachedWalletAddress(type);
   
-  // 对于 EVM 钱包，直接返回缓存地址
-  // 因为 eth_accounts 返回的是 MetaMask 当前选中的账户，
-  // 而不是用户在应用中选择连接的账户
-  // 缓存地址是用户明确连接时保存的，应该被信任
+  // For EVM wallets, return cached address directly
+  // Because eth_accounts returns MetaMask's currently selected account,
+  // not the account user selected to connect in the app
+  // Cached address is saved on explicit connection, should be trusted
   if (type === NetworkType.EVM) {
     if (cachedAddress) {
       return cachedAddress;
     }
-    // 没有缓存时，检查钱包当前状态
+    // When no cache, check wallet's current state
     if ((window as any).ethereum) {
       try {
         const accounts = await (window as any).ethereum.request({
@@ -251,7 +251,7 @@ export async function getCurrentWallet(networkType?: NetworkType): Promise<strin
     return null;
   }
   
-  // 对于 Solana 钱包，需要验证连接状态
+  // For Solana wallets, need to verify connection status
   if (type === NetworkType.SOLANA || type === NetworkType.SVM) {
     const solana = (window as any).solana;
     if (!solana || !solana.isConnected) {
@@ -340,26 +340,26 @@ export function onWalletDisconnect(
 }
 
 /**
- * 切换到指定网络
- * 如果该网络已有缓存的钱包地址，则直接切换
- * 如果没有缓存，则需要连接钱包
+ * Switch to specified network
+ * If network has cached wallet address, switch directly
+ * If no cache, need to connect wallet
  */
 export async function switchNetwork(networkType: NetworkType): Promise<string | null> {
   const cachedAddress = getCachedWalletAddress(networkType);
   
   if (cachedAddress) {
-    // 如果有缓存地址，直接切换网络类型
+    // If cached address exists, switch network type directly
     saveConnectedNetworkType(networkType);
-    clearWalletDisconnection(networkType); // 清除该网络的断开标记
+    clearWalletDisconnection(networkType); // Clear disconnection flag for this network
     
-    // 验证钱包是否仍然连接
+    // Verify wallet is still connected
     const currentAddress = await getCurrentWallet(networkType);
     if (currentAddress) {
       return currentAddress;
     }
   }
   
-  // 如果没有缓存或验证失败，返回 null 表示需要重新连接
+  // If no cache or verification failed, return null to indicate reconnection needed
   return null;
 }
 
