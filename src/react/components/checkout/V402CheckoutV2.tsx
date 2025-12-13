@@ -6,10 +6,11 @@ import {usePageNetwork} from "../../hooks/usePageNetwork";
 import {usePayment} from "../../hooks/usePayment";
 import {PROD_BACK_URL} from "../../../types/common";
 import {makePayment} from "../../../utils";
-import {WalletConnect} from '../wallet/WalletConnect';
 import {getNetworkIcon} from "../../utils/CryptoIcons";
 import {AnimationStyles} from "../../styles/animations";
 import {Receipt} from "./Receipt";
+import {TerminalScreen} from "./TerminalScreen";
+import {TerminalButtons} from "./TerminalButtons";
 import {PaymentDetails, V402CheckoutV2Props} from "./types";
 
 // Re-export types for external use
@@ -27,15 +28,20 @@ const generateRandomId = () => {
  */
 export default function V402CheckoutV2({
                                            checkoutId,
-                                           title = 'V402Pay Checkout',
+                                           headerInfo = {},
                                            primaryColor = '#84cc16',
-                                           brandName = 'V402PAY',
-                                           receiptTitle = 'V402 PAYMENT',
                                            isModal = false,
                                            onPaymentComplete,
                                            additionalParams = {},
                                            expectedNetwork,
                                        }: V402CheckoutV2Props) {
+    // 从 headerInfo 解构，设置默认值
+    const {
+        title = 'V402Pay Checkout',
+        brandName = 'V402PAY',
+        receiptTitle = 'V402 PAYMENT',
+        tooltipText = 'V402Pay - Accept Crypto Payments Easier',
+    } = headerInfo;
     const endpoint = PROD_BACK_URL;
 
     // Hooks
@@ -184,7 +190,7 @@ export default function V402CheckoutV2({
                         style={{backgroundColor: 'rgba(0,0,0,0.4)'}}
                     />
 
-                    {/* Header - 简化版 */}
+                    {/* Header */}
                     <div className="flex justify-between items-center mb-2 mt-1 px-1">
                         <div className="flex items-center gap-1.5">
                             <div
@@ -212,103 +218,16 @@ export default function V402CheckoutV2({
                     </div>
 
                     {/* Screen */}
-                    <div
-                        className="rounded-xl p-3 mb-3"
-                        style={{
-                            backgroundColor: '#0a1a0a',
-                            boxShadow: 'inset 0 3px 16px rgba(0,0,0,0.5)',
-                            border: '3px solid rgba(0,0,0,0.3)',
-                        }}
-                    >
-                        {/* Screen Header with Title */}
-                        <div className="flex justify-between items-center mb-2">
-                            <div className="flex items-center gap-1.5 flex-1 min-w-0">
-                                <div className="w-2.5 h-2.5 rounded border border-green-700 flex-shrink-0"/>
-                                {title ? (
-                                    <span
-                                        className="text-xs font-mono"
-                                        style={{color: '#22c55e80'}}
-                                        title={title}
-                                    >
-                                        {title.length > 26 ? `${title.slice(0, 13)}...${title.slice(-13)}` : title}
-                                    </span>
-                                ) : (
-                                    <span className="text-xs font-mono" style={{color: '#22c55e80'}}>
-                                        CHECKOUT
-                                    </span>
-                                )}
-                            </div>
-                            <div className="flex gap-0.5 flex-shrink-0">
-                                <div className="w-1 h-1.5 rounded-sm"
-                                     style={{backgroundColor: address ? '#22c55e80' : '#22c55e30'}}/>
-                                <div className="w-1 h-1.5 rounded-sm"
-                                     style={{backgroundColor: address ? '#22c55e80' : '#22c55e30'}}/>
-                                <div className="w-1 h-1.5 rounded-sm" style={{backgroundColor: '#22c55e80'}}/>
-                            </div>
-                        </div>
-
-                        {/* Screen Content */}
-                        <div className="min-h-[120px]">
-                            {hasInvalidCheckoutId ? (
-                                <div className="text-center py-3">
-                                    <div className="text-red-500 text-xl mb-1">✗</div>
-                                    <div className="text-red-500 font-mono text-sm mb-1">INVALID ID</div>
-                                    <div className="text-red-400 font-mono text-xs">Check your checkout ID</div>
-                                </div>
-                            ) : fetchingPaymentInfo ? (
-                                <div className="text-center py-4">
-                                    <div
-                                        className="inline-block w-5 h-5 border-2 rounded-full mb-2"
-                                        style={{
-                                            borderColor: '#22c55e40',
-                                            borderTopColor: '#22c55e',
-                                            animation: 'spin 1s linear infinite',
-                                        }}
-                                    />
-                                    <div className="font-mono text-sm" style={{color: '#22c55e'}}>LOADING...</div>
-                                </div>
-                            ) : !address ? (
-                                <div>
-                                    <div
-                                        className="font-mono text-base mb-3 tracking-wider"
-                                        style={{color: '#f97316', textShadow: '0 0 10px #f9731640'}}
-                                    >
-                                        CONNECT WALLET...
-                                    </div>
-                                    <WalletConnect supportedNetworks={supportedNetworks} showSwitchWallet={false}/>
-                                </div>
-                            ) : (
-                                <div>
-                                    <div
-                                        className="font-mono text-base mb-3 tracking-wider"
-                                        style={{color: '#f97316', textShadow: '0 0 10px #f9731640'}}
-                                    >
-                                        {screenText}
-                                    </div>
-                                    {paymentDetails && (
-                                        <div className="text-xs font-mono">
-                                            {/* 第一行: AMOUNT 和 CURRENCY */}
-                                            <div className="grid grid-cols-2 gap-1.5 mb-1.5">
-                                                <div>
-                                                    <div style={{color: '#22c55e60'}}>AMOUNT</div>
-                                                    <div style={{color: '#22c55e'}}>${paymentDetails.amount}</div>
-                                                </div>
-                                                <div>
-                                                    <div style={{color: '#22c55e60'}}>CURRENCY</div>
-                                                    <div style={{color: '#22c55e'}}>{paymentDetails.currency}</div>
-                                                </div>
-                                            </div>
-                                            {/* 第二行: WALLET 完整显示 */}
-                                            <div>
-                                                <div style={{color: '#22c55e60'}}>WALLET</div>
-                                                <div style={{color: '#22c55e', wordBreak: 'break-all'}}>{address}</div>
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-                        </div>
-                    </div>
+                    <TerminalScreen
+                        title={title}
+                        tooltipText={tooltipText}
+                        hasInvalidCheckoutId={hasInvalidCheckoutId}
+                        fetchingPaymentInfo={fetchingPaymentInfo}
+                        address={address}
+                        paymentDetails={paymentDetails}
+                        screenText={screenText}
+                        supportedNetworks={supportedNetworks}
+                    />
 
                     {/* Buttons */}
                     <TerminalButtons
@@ -322,7 +241,7 @@ export default function V402CheckoutV2({
                         onPayment={handlePayment}
                     />
 
-                    {/* Brand - 烙印风格 */}
+                    {/* Brand */}
                     {brandName && (
                         <div className="text-center mt-0 mb-0">
                             <div
@@ -346,122 +265,3 @@ export default function V402CheckoutV2({
         </div>
     );
 }
-
-// ============ Sub Components ============
-
-interface TerminalButtonsProps {
-    address: string | null;
-    showReceipt: boolean;
-    isProcessing: boolean;
-    paymentDetails: PaymentDetails | null;
-    hasInvalidCheckoutId: boolean;
-    onDisconnect: () => void;
-    onClearReceipt: () => void;
-    onPayment: () => void;
-}
-
-const TerminalButtons: React.FC<TerminalButtonsProps> = ({
-                                                             address,
-                                                             showReceipt,
-                                                             isProcessing,
-                                                             paymentDetails,
-                                                             hasInvalidCheckoutId,
-                                                             onDisconnect,
-                                                             onClearReceipt,
-                                                             onPayment,
-                                                         }) => {
-    const isPayDisabled = isProcessing || !paymentDetails || !address || hasInvalidCheckoutId;
-
-    return (
-        <div className="flex items-center justify-between px-1">
-            {/* Left Buttons */}
-            <div className="flex gap-2">
-                <CircleButton
-                    onClick={() => address && onDisconnect()}
-                    disabled={!address}
-                    title="Disconnect"
-                    size="small"
-                >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
-                        <path d="M18 6L6 18M6 6l12 12"/>
-                    </svg>
-                </CircleButton>
-                <CircleButton
-                    onClick={onClearReceipt}
-                    disabled={!showReceipt || isProcessing}
-                    title="Clear"
-                    size="small"
-                >
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
-                        <path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6h14z"/>
-                    </svg>
-                </CircleButton>
-            </div>
-
-            {/* Decorative Lines */}
-            <div className="flex flex-col gap-0.5 opacity-40">
-                <div className="w-6 h-0.5 rounded" style={{backgroundColor: 'rgba(0,0,0,0.3)'}}/>
-                <div className="w-6 h-0.5 rounded" style={{backgroundColor: 'rgba(0,0,0,0.3)'}}/>
-                <div className="w-6 h-0.5 rounded" style={{backgroundColor: 'rgba(0,0,0,0.3)'}}/>
-            </div>
-
-            {/* Pay Button */}
-            <button
-                onClick={onPayment}
-                disabled={isPayDisabled}
-                className="px-5 py-2.5 rounded-xl font-bold text-white flex items-center gap-2 transition-all active:scale-95"
-                style={{
-                    backgroundColor: isPayDisabled ? '#9ca3af' : '#ea580c',
-                    boxShadow: isPayDisabled ? 'none' : '0 4px 12px rgba(234,88,12,0.4), inset 0 -2px 4px rgba(0,0,0,0.2)',
-                    cursor: isPayDisabled ? 'not-allowed' : 'pointer',
-                }}
-            >
-                {isProcessing ? (
-                    <>
-                        <div
-                            className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full"
-                            style={{animation: 'spin 0.8s linear infinite'}}
-                        />
-                        <span className="font-mono tracking-wider text-sm">PAYING...</span>
-                    </>
-                ) : (
-                    <>
-                        <span className="font-mono tracking-wider text-sm">PAY</span>
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                             strokeWidth="2">
-                            <path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/>
-                        </svg>
-                    </>
-                )}
-            </button>
-        </div>
-    );
-};
-
-interface CircleButtonProps {
-    onClick: () => void;
-    disabled: boolean;
-    title: string;
-    size?: 'small' | 'normal';
-    children: React.ReactNode;
-}
-
-const CircleButton: React.FC<CircleButtonProps> = ({onClick, disabled, title, size = 'normal', children}) => {
-    const sizeClass = size === 'small' ? 'w-10 h-10' : 'w-12 h-12';
-
-    return (
-        <button
-            onClick={onClick}
-            disabled={disabled}
-            className={`${sizeClass} rounded-full flex items-center justify-center transition-transform active:scale-95`}
-            style={{
-                backgroundColor: '#374151',
-                boxShadow: 'inset 0 -2px 4px rgba(0,0,0,0.3), 0 2px 4px rgba(0,0,0,0.2)',
-                opacity: disabled ? 0.5 : 1,
-            }}
-            title={title}
-        >
-            {children}
-        </button>
-    );
-};
