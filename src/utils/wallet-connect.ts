@@ -251,13 +251,12 @@ export async function getCurrentWallet(networkType?: NetworkType): Promise<strin
     return null;
   }
   
-  // For Solana wallets, need to verify connection status
+  // For Solana wallets, ALWAYS return cached address
+  // The cached address is from user's explicitly selected wallet (e.g., OKX, Phantom)
+  // We should NOT use window.solana because it might be a different wallet (e.g., Phantom)
+  // than the one user selected (e.g., OKX)
   if (type === NetworkType.SOLANA || type === NetworkType.SVM) {
-    const solana = (window as any).solana;
-    if (!solana || !solana.isConnected) {
-      return cachedAddress;
-    }
-    return solana.publicKey?.toString() || cachedAddress;
+    return cachedAddress;
   }
 
   return cachedAddress;

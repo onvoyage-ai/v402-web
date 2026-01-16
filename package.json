@@ -1,6 +1,6 @@
 {
   "name": "@voyage_ai/v402-web-ts",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "v402pay platform frontend SDK for seamless Web3 payment integration with Solana and Ethereum support",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
@@ -30,7 +30,7 @@
     "README.md"
   ],
   "scripts": {
-    "build:css": "tailwindcss -i ./src/react/styles.css -o ./dist/react/styles.css --minify",
+    "build:css": "BROWSERSLIST_IGNORE_OLD_DATA=true tailwindcss -i ./src/react/styles.css -o ./dist/react/styles.css --minify",
     "build:js": "tsup",
     "build": "npm run build:js && npm run build:css",
     "build:prod": "BUILD_ENV=production npm run build:js && npm run build:css",
@@ -56,10 +56,8 @@
   "author": "",
   "license": "MIT",
   "peerDependencies": {
-    "@ant-design/icons": "^5.6.1",
     "@solana/spl-token": "^0.4.0",
     "@solana/web3.js": "^1.95.0",
-    "antd": "^5.29.1",
     "ethers": "^6.0.0",
     "react": ">=18.0.0",
     "react-dom": ">=18.0.0"
@@ -70,12 +68,6 @@
     },
     "react-dom": {
       "optional": true
-    },
-    "antd": {
-      "optional": true
-    },
-    "@ant-design/icons": {
-      "optional": true
     }
   },
   "dependencies": {
@@ -83,14 +75,14 @@
     "zod": "^3.22.0"
   },
   "devDependencies": {
-    "@ant-design/icons": "^5.6.1",
     "@solana/spl-token": "^0.4.14",
     "@solana/web3.js": "^1.98.4",
     "@types/node": "^20.0.0",
     "@types/react": "^18.0.0",
     "@types/react-dom": "^18.3.7",
-    "antd": "^5.29.1",
     "autoprefixer": "^10.4.22",
+    "browserslist": "^4.28.1",
+    "caniuse-lite": "^1.0.30001764",
     "postcss": "^8.5.6",
     "tailwindcss": "^3.4.18",
     "tsup": "^8.0.0",

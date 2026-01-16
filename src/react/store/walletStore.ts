@@ -205,9 +205,31 @@ class WalletStore {
 
     try {
       // 尝试使用缓存的钱包地址切换
-      const address = await switchNetworkUtil(type);
+      let address = await switchNetworkUtil(type);
 
       if (address) {
+        // Verify the address matches the actual wallet provider
+        // This is important because cached address might be from a different wallet
+        const wallets = getWalletsForNetwork(type);
+        if (wallets.length > 0) {
+          // Try to get the correct address from the saved wallet provider
+          const { getWalletProviderForPayment } = await import('../../utils/wallet-discovery');
+          const provider = getWalletProviderForPayment(type);
+          
+          if (provider) {
+            // For Solana, check provider's publicKey
+            if (type === NetworkType.SOLANA || type === NetworkType.SVM) {
+              const providerAddress = provider.publicKey?.toString();
+              
+              if (providerAddress && providerAddress !== address) {
+                address = providerAddress;
+                // Update the cache with correct address
+                saveWalletAddress(type, providerAddress);
+              }
+            }
+          }
+        }
+        
         // 成功使用缓存的钱包切换
         this.setState({
           address,
@@ -270,8 +292,22 @@ class WalletStore {
       return;
     }
 
-    // 如果当前网络已经匹配，直接返回
+    // 如果当前网络已经匹配且有地址，验证地址是否和实际钱包一致
     if (this.state.networkType === expectedNetwork && this.state.address) {
+      // Verify the stored address matches the actual wallet provider
+      const { getWalletProviderForPayment } = await import('../../utils/wallet-discovery');
+      const provider = getWalletProviderForPayment(expectedNetwork);
+      
+      if (provider && (expectedNetwork === NetworkType.SOLANA || expectedNetwork === NetworkType.SVM)) {
+        const providerAddress = provider.publicKey?.toString();
+        if (providerAddress && providerAddress !== this.state.address) {
+          // Update state and cache with correct address
+          this.setState({ address: providerAddress });
+          saveWalletAddress(expectedNetwork, providerAddress);
+          return;
+        }
+      }
+      
       return;
     }
 

@@ -7,7 +7,7 @@
  */
 
 import { NetworkType } from '../types';
-import { getConnectedWalletId, saveConnectedWalletId, removeConnectedWalletId } from './wallet';
+import { getConnectedWalletId, saveConnectedWalletId, removeConnectedWalletId, getCachedWalletAddress, saveWalletAddress } from './wallet';
 
 // EIP-6963 types
 export interface EIP6963ProviderInfo {
@@ -357,18 +357,31 @@ export function clearConnectedWallet(networkType?: NetworkType): void {
  */
 function restoreConnectedWallet(networkType: NetworkType): WalletInfo | null {
   const savedWalletName = getConnectedWalletId(networkType);
-  if (!savedWalletName) return null;
+  if (!savedWalletName) {
+    return null;
+  }
   
   // Find the wallet by name (more reliable than ID for EIP-6963 wallets)
   const wallet = getWalletByName(savedWalletName, networkType);
   if (wallet) {
     // Restore to memory
     currentConnectedWallet = wallet;
-    console.log(`✅ Restored wallet provider: ${wallet.name}`);
+    
+    // For Solana wallets, check if provider's publicKey matches cached address
+    if ((networkType === NetworkType.SOLANA || networkType === NetworkType.SVM) && wallet.provider) {
+      const providerPublicKey = wallet.provider.publicKey?.toString();
+      const cachedAddress = getCachedWalletAddress(networkType);
+      
+      if (providerPublicKey && cachedAddress && providerPublicKey !== cachedAddress) {
+        // Update the cache with the correct address from provider
+        saveWalletAddress(networkType, providerPublicKey);
+      }
+    }
+    
+    // For EVM wallets, address validation will happen in payment-helpers.ts before payment
     return wallet;
   }
   
-  console.warn(`⚠️ Could not find wallet with name: ${savedWalletName}`);
   return null;
 }
 

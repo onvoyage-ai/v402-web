@@ -29,49 +29,46 @@ import './styles.css';
 // Hooks
 // ============================================
 
-export { useWallet } from './hooks/useWalletStore';
-export type { UseWalletReturn } from './hooks/useWalletStore';
+export {useWallet} from './hooks/useWalletStore';
+export type {UseWalletReturn} from './hooks/useWalletStore';
 
-export { usePageNetwork } from './hooks/usePageNetwork';
-export type { UsePageNetworkOptions } from './hooks/usePageNetwork';
+export {usePageNetwork} from './hooks/usePageNetwork';
+export type {UsePageNetworkOptions} from './hooks/usePageNetwork';
 
-export { usePayment } from './hooks/usePayment';
-export type { UsePaymentReturn } from './hooks/usePayment';
+export {usePayment} from './hooks/usePayment';
+export type {UsePaymentReturn} from './hooks/usePayment';
 
-export { usePaymentInfo } from './hooks/usePaymentInfo';
-export type { UsePaymentInfoReturn } from './hooks/usePaymentInfo';
+export {usePaymentInfo} from './hooks/usePaymentInfo';
+export type {UsePaymentInfoReturn} from './hooks/usePaymentInfo';
 
-export { useToast } from './hooks/useToast';
+export {useToast} from './hooks/useToast';
 
 // ============================================
 // Components - Wallet
 // ============================================
 
-export { WalletConnect } from './components/wallet/WalletConnect';
-export type { WalletConnectProps } from './components/wallet/WalletConnect';
+export {WalletConnect} from './components/wallet/WalletConnect';
+export type {WalletConnectProps} from './components/wallet/WalletConnect';
 
-export { WalletSelectModal } from './components/wallet/WalletSelectModal';
-export type { WalletSelectModalProps } from './components/wallet/WalletSelectModal';
+export {WalletSelectModal} from './components/wallet/WalletSelectModal';
+export type {WalletSelectModalProps} from './components/wallet/WalletSelectModal';
 
 // ============================================
 // Components - Checkout
 // ============================================
 
-export { default as V402Checkout } from './components/checkout/V402Checkout';
-export type { V402CheckoutProps } from './components/checkout/types';
-
-export { default as V402CheckoutV2 } from './components/checkout/V402CheckoutV2';
-export type { V402CheckoutV2Props } from './components/checkout/types';
+export {default as V402CheckoutV2} from './components/checkout/V402CheckoutV2';
+export type {V402CheckoutV2Props} from './components/checkout/types';
 
 // ============================================
 // Components - UI (Internal, but exported for advanced use)
 // ============================================
 
-export { Toast } from './components/ui/Toast';
-export type { ToastProps, ToastType } from './components/ui/Toast';
+export {Toast} from './components/ui/Toast';
+export type {ToastProps, ToastType} from './components/ui/Toast';
 
 // ============================================
 // Styles & Utilities
 // ============================================
 
-export { checkoutAnimations, AnimationStyles } from './styles/animations';
+export {checkoutAnimations, AnimationStyles} from './styles/animations';

@@ -115,6 +115,7 @@ export async function makePayment(
     if (networkType === NetworkType.SOLANA || networkType === NetworkType.SVM) {
         // Solana payment - use the selected wallet provider
         const solana = getWalletProviderForPayment(networkType);
+        
         if (!solana) {
             throw new Error('Please connect your Solana wallet first.');
         }
@@ -124,8 +125,9 @@ export async function makePayment(
         }
 
         // Validate address if provided
-        if (expectedAddress && solana.publicKey) {
-            const currentAddress = solana.publicKey.toString();
+        const currentAddress = solana.publicKey?.toString();
+        
+        if (expectedAddress && currentAddress) {
             if (currentAddress !== expectedAddress) {
                 throw new Error(
                     `Wallet account mismatch: the current wallet account is ${currentAddress.slice(0, 8)}...，` +

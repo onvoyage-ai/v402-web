@@ -22,20 +22,7 @@ export interface PaymentDetails {
 }
 
 /**
- * V402Checkout 组件 Props (V1)
- */
-export interface V402CheckoutProps {
-    checkoutId: string;
-    headerInfo?: HeaderInfo;
-    isModal?: boolean;
-    onPaymentComplete?: (response: any) => void;
-    additionalParams?: Record<string, any>;
-    expectedNetwork?: NetworkType;
-}
-
-/**
  * V402CheckoutV2 组件 Props
- * 简化版本，更直观的配置
  */
 export interface V402CheckoutV2Props {
     /** Checkout ID */
