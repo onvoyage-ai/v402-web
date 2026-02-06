@@ -1,6 +1,6 @@
 {
   "name": "@voyage_ai/v402-web-ts",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "v402pay platform frontend SDK for seamless Web3 payment integration with Solana and Ethereum support",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
