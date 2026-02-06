@@ -44,7 +44,7 @@ import {wrapPaymentError} from "../../utils";
 export async function createSvmPaymentHeader(
     params: CreateSvmPaymentHeaderParams
 ): Promise<string> {
-    const { wallet, paymentRequirements, x402Version, rpcUrl } = params;
+    const {wallet, paymentRequirements, x402Version, rpcUrl} = params;
 
     // Create RPC connection
     const connection = new Connection(rpcUrl);
@@ -105,9 +105,7 @@ export async function createSvmPaymentHeader(
     // Check if source ATA exists (user must already have token account)
     const sourceAtaInfo = await connection.getAccountInfo(sourceAta);
     if (!sourceAtaInfo) {
-        throw new Error(
-            `User does not have an Associated Token Account for ${paymentRequirements.asset}. Please create one first or ensure you have the required token.`
-        );
+        throw new Error("You don't have enough balance to complete this payment.");
     }
 
     // Check if destination ATA exists (receiver must already have token account)
@@ -140,7 +138,7 @@ export async function createSvmPaymentHeader(
     ];
 
     // Get recent blockhash
-    const { blockhash } = await connection.getLatestBlockhash();
+    const {blockhash} = await connection.getLatestBlockhash();
 
     // Build transaction message
     const messageV0 = new TransactionMessage({
