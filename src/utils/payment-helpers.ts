@@ -3,12 +3,13 @@
  * Simplified payment handling with callbacks
  */
 
-import {NetworkType} from "../types";
-import type {PaymentRequirements} from "x402/types";
-import {handleEvmPayment, handleSvmPayment} from "../services";
-import {ethers} from "ethers";
-import {PROD_BACK_URL} from "../types/common";
-import {getWalletProviderForPayment} from "./wallet-discovery";
+import { NetworkType } from "../types";
+import type { PaymentRequirements } from "x402/types";
+import { handleEvmPayment, handleSvmPayment } from "../services";
+import { ethers } from "ethers";
+import { PROD_BACK_URL } from "../types/common";
+import { getWalletProviderForPayment } from "./wallet-discovery";
+import { getNetworkType } from "./network";
 
 export interface PaymentCallbacks {
     onStart?: () => void;
@@ -41,19 +42,9 @@ export function getSupportedNetworkTypes(paymentRequirements: PaymentRequirement
     const networkTypes = new Set<NetworkType>();
 
     paymentRequirements.forEach(req => {
-        const network = req.network.toLowerCase();
-
-        if (network.includes('solana') || network.includes('svm')) {
-            networkTypes.add(NetworkType.SOLANA);
-        } else if (
-            network.includes('ethereum') ||
-            network.includes('base') ||
-            network.includes('polygon') ||
-            network.includes('arbitrum') ||
-            network.includes('optimism') ||
-            network.includes('sepolia')
-        ) {
-            networkTypes.add(NetworkType.EVM);
+        const type = getNetworkType(req.network);
+        if (type !== NetworkType.UNKNOWN) {
+            networkTypes.add(type);
         }
     });
 
@@ -115,7 +106,7 @@ export async function makePayment(
     if (networkType === NetworkType.SOLANA || networkType === NetworkType.SVM) {
         // Solana payment - use the selected wallet provider
         const solana = getWalletProviderForPayment(networkType);
-        
+
         if (!solana) {
             throw new Error('Please connect your Solana wallet first.');
         }
@@ -126,7 +117,7 @@ export async function makePayment(
 
         // Validate address if provided
         const currentAddress = solana.publicKey?.toString();
-        
+
         if (expectedAddress && currentAddress) {
             if (currentAddress !== expectedAddress) {
                 throw new Error(

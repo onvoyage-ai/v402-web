@@ -42,7 +42,7 @@ export default function V402CheckoutV2({
         receiptTitle = 'V402 PAYMENT',
         tooltipText = 'V402Pay - Accept Crypto Payments Easier',
     } = headerInfo;
-    const endpoint = PROD_BACK_URL;
+    const endpoint = "http://localhost:3000/api/pay";
 
     // Hooks
     const {
@@ -52,6 +52,8 @@ export default function V402CheckoutV2({
     } = usePaymentInfo(checkoutId, endpoint, additionalParams);
 
     const targetNetwork = expectedNetwork || supportedNetworks[0];
+    // 获取的targetNetwork打印一下
+    console.log("Target Network:", targetNetwork);
 
     const {address, networkType, disconnect, ensureNetwork} = usePageNetwork(
         targetNetwork,

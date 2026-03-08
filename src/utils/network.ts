@@ -21,6 +21,8 @@ const NETWORK_TYPE_MAP: Record<string, NetworkType> = {
     'bsc': NetworkType.EVM,
     'sepolia': NetworkType.EVM,
     'goerli': NetworkType.EVM,
+    'xlayer': NetworkType.EVM,
+    'xlayer-testnet': NetworkType.EVM,
 
     // Solana/SVM
     'solana': NetworkType.SOLANA,

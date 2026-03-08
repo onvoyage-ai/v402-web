@@ -30,7 +30,7 @@ const baseConfig: Partial<Options> = {
             ...(options.define || {}),
             '__PROD_BACK_URL__': !isRelease 
                 ? JSON.stringify('http://localhost:3000/api/pay')
-                : JSON.stringify('https://v402pay.onvoyage.ai/api/pay'),
+                : JSON.stringify('http://localhost:3000/api/pay'),
         };
     },
 };
@@ -55,7 +55,7 @@ export default defineConfig([
                 ...(options.define || {}),
                 '__PROD_BACK_URL__': !isRelease 
                     ? JSON.stringify('http://localhost:3000/api/pay')
-                    : JSON.stringify('https://v402pay.onvoyage.ai/api/pay'),
+                    : JSON.stringify('http://localhost:3000/api/pay'),
             };
         },
     },

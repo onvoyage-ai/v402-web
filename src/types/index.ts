@@ -86,6 +86,4 @@ export type {
 export {
   EvmNetworkSchema,
   EvmPaymentPayloadSchema,
-  EVM_NETWORK_CONFIGS,
-  getChainId,
 } from "./evm";
