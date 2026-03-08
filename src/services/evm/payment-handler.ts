@@ -5,10 +5,10 @@
  * Use this for the simplest integration - just provide wallet and endpoint
  */
 
-import type {EvmClientConfig} from "../../types";
-import {EvmNetworkSchema} from "../../types";
-import type {PaymentRequirements, x402Response} from "x402/types";
-import {createEvmPaymentHeader, getChainIdFromNetwork} from "./payment-header";
+import type { EvmClientConfig } from "../../types";
+import { EvmNetworkSchema } from "../../types";
+import type { PaymentRequirements, x402Response } from "x402/types";
+import { createEvmPaymentHeader, getChainIdFromNetwork, NETWORK_NAMES } from "./payment-header";
 import {
     IGNORED_402_ERRORS,
     PAYMENT_ERROR_MESSAGES,
@@ -16,19 +16,6 @@ import {
     PaymentOperationError,
     wrapPaymentError,
 } from "../../utils";
-
-/**
- * Network ID to name mapping
- */
-const NETWORK_NAMES: Record<number, string> = {
-    1: 'Ethereum Mainnet',
-    11155111: 'Sepolia Testnet',
-    8453: 'Base Mainnet',
-    84532: 'Base Sepolia Testnet',
-    137: 'Polygon Mainnet',
-    42161: 'Arbitrum One',
-    10: 'Optimism Mainnet',
-};
 
 /**
  * Handle EVM payment with automatic x402 flow

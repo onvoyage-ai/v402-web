@@ -10,6 +10,21 @@ import type { CreateEvmPaymentHeaderParams } from "../../types";
 import { wrapPaymentError } from "../../utils";
 
 /**
+ * Network chain ID to display name mapping
+ */
+export const NETWORK_NAMES: Record<number, string> = {
+    1: 'Ethereum Mainnet',
+    11155111: 'Sepolia Testnet',
+    8453: 'Base Mainnet',
+    84532: 'Base Sepolia Testnet',
+    137: 'Polygon Mainnet',
+    42161: 'Arbitrum One',
+    10: 'Optimism Mainnet',
+    196: 'XLayer Mainnet',
+    1952: 'XLayer Testnet',
+};
+
+/**
  * Create X-PAYMENT header for EVM payment (EIP-3009 format)
  *
  * @param params - Payment header parameters
@@ -52,20 +67,8 @@ export async function createEvmPaymentHeader(
             const currentChainId = parseInt(currentChainIdHex, 16);
 
             if (currentChainId !== chainId) {
-                const networkNames: Record<number, string> = {
-                    1: 'Ethereum Mainnet',
-                    11155111: 'Sepolia Testnet',
-                    8453: 'Base Mainnet',
-                    84532: 'Base Sepolia Testnet',
-                    137: 'Polygon Mainnet',
-                    42161: 'Arbitrum One',
-                    10: 'Optimism Mainnet',
-                    196: 'XLayer Mainnet',
-                    1952: 'XLayer Testnet',
-                };
-
-                const currentNetworkName = networkNames[currentChainId] || `Chain ${currentChainId}`;
-                const targetNetworkName = networkNames[chainId] || `Chain ${chainId}`;
+                const currentNetworkName = NETWORK_NAMES[currentChainId] || `Chain ${currentChainId}`;
+                const targetNetworkName = NETWORK_NAMES[chainId] || `Chain ${chainId}`;
 
                 throw new Error(
                     `Network mismatch: Your wallet is connected to ${currentNetworkName}, ` +
