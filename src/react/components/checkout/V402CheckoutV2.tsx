@@ -42,7 +42,7 @@ export default function V402CheckoutV2({
         receiptTitle = 'V402 PAYMENT',
         tooltipText = 'V402Pay - Accept Crypto Payments Easier',
     } = headerInfo;
-    const endpoint = "http://localhost:3000/api/pay";
+    const endpoint = PROD_BACK_URL;
 
     // Hooks
     const {
